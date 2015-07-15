@@ -211,7 +211,6 @@ class Crawler():
 
 
 if __name__ == '__main__':
-    #target_url = "http://127.0.0.1/dvwa"
     target_url = "http://www.vanishingincmagic.com"
     #记录时间
     start = time.clock()
