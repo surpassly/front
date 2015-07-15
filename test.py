@@ -2,10 +2,11 @@
 reload(__import__('sys')).setdefaultencoding('utf-8') 
 
 import time, urllib2, urlparse
+from ghost import Ghost, TimeoutError
 from pywebfuzz import utils, fuzzdb
 from bs4 import BeautifulSoup
-from ghost import Ghost, TimeoutError
 from tag import *
+from sites import*
 
 page_timeout = 60
 alert_timeout = 3
@@ -30,7 +31,8 @@ def slash(url):
 def get_attrs(list, soup):
     val = []
     for attr in list:
-        val.append(soup[attr] if attr in soup.attrs else '') 
+        val.append(soup[attr] if attr in soup.attrs else '')
+    val.append(soup.prettify()) # outerHTML
     return val
             
     
@@ -41,33 +43,34 @@ def capture_page(ghost, url):
 
 class Test():
     def __init__(self, location, mainwindow = None):
-        self.location = location
         self.mainwindow = mainwindow
-        # self.addMessage("<b>%s...opening</b>" % self.location)
-        print "%s...opening" % self.location
+        self.addMessage("<b>%s...opening</b>" % location)
+        print "%s...opening" % location
         self.__ghost = Ghost(wait_timeout=page_timeout, download_images=False, display=True)
         # dvwa_security(self.__ghost, "low")
         try:
-            self.__ghost.open(self.location)
+            self.__ghost.open(location)
         except TimeoutError:
             return
-        r = urlparse.urlparse(self.location)
+        r = urlparse.urlparse(location)
         self.host = r.scheme + "://" + r.netloc
+        self.__as = []
         self.__inputs = []
         self.__buttons = []
         self.__forms = []
+        self.location = location
         soup = BeautifulSoup(str(self.__ghost.content), from_encoding='utf-8')
         self.__getInputsAndForms(soup)
         self.testFormsWithGhost()
-        #self.__ghost.sleep(30)
-    
+        if self.mainwindow:
+            self.mainwindow.go_button.setDisabled(False)
+        self.__ghost.hide()
+        self.__ghost.sleep(60)
+        self.__ghost.exit()
+
     def addMessage(self, content, widget=None):
         if self.mainwindow:
             self.mainwindow.addMessage(content, widget)
-        else:
-            if not widget:
-                print content
-        return
    
     def __convertAction(self, action):
         host = slash(self.host)
@@ -88,40 +91,49 @@ class Test():
         return action         
         
     def __getInputsAndForms(self, soup):
+        # <a>
+        bs_as = soup.find_all('a')
+        for bs_a in bs_as:
+            attrs = get_attrs(["href"], bs_a)
+            self.__as.append(A(*attrs))
+        # <input>
         bs_inputs = soup.find_all('input')
         for bs_input in bs_inputs:
             attrs = get_attrs(["id", "name", "type", "value"], bs_input)
-            attrs.append(bs_input.prettify()) # outerHTML
             self.__inputs.append(Input(*attrs))
-      
+        # <button>
         bs_buttons = soup.find_all('button')
         for bs_button in bs_buttons:
             attrs = get_attrs(["class", "id", "name", "type"], bs_button)
-            attrs.append(str(bs_button.prettify())) # outerHTML
             self.__buttons.append(Button(*attrs))
-        
+        # <form>
         bs_forms = soup.find_all('form')
         for bs_form in bs_forms:
+            form_as = []
+            bs_as = soup.find_all('a')
+            for bs_a in bs_as:
+                attrs = get_attrs(["href"], bs_a)
+                form_as.append(A(*attrs))
             form_inputs = []
             bs_inputs = bs_form.find_all('input')
             for bs_input in bs_inputs:
                 attrs = get_attrs(["id", "name", "type", "value"], bs_input)
-                attrs.append(bs_input.prettify()) # outerHTML
                 form_inputs.append(Input(*attrs))
-            
             form_buttons = []
             for bs_button in bs_buttons:
                 attrs = get_attrs(["class", "id", "name", "type"], bs_button)
-                attrs.append(str(bs_button.prettify())) # outerHTML
                 form_buttons.append(Button(*attrs))
-                            
             attrs = get_attrs(["action", "id", "method", "name"], bs_form)
+            attrs.append(form_as)
             attrs.append(form_inputs)
             attrs.append(form_buttons)
-            attrs.append(bs_form.prettify())  # outerHTML
             self.__forms.append(Form(*attrs))
 
         for form in self.__forms:
+            for a in form.as_:
+                for i in self.__as:
+                    if a.outerHTML == i.outerHTML:
+                        self.__as.remove(i)
             for input in form.inputs:
                 for i in self.__inputs:
                     if input.outerHTML == i.outerHTML:
@@ -130,20 +142,20 @@ class Test():
                 for i in self.__buttons:
                     if button.outerHTML == i.outerHTML:
                         self.__buttons.remove(i)
-        '''
             self.addMessage(str(form), 'form')        
+        for a in self.__as:
+            self.addMessage(a.outerHTML, 'input')
         for input in self.__inputs:
-            self.addMessage(str(input), 'input')
+            self.addMessage(input.outerHTML, 'input')
         for button in self.__buttons:
-            self.addMessage(str(button), 'button')
-        '''
+            self.addMessage(button.outerHTML, 'button')
         return
             
     def testFormsWithGhost(self):        
         for i, form in enumerate(self.__forms): 
             # doc, res = self.__ghost.evaluate("document.querySelectorAll('form')[%d].parentNode.outerHTML;" % i)
             # print doc
-            # self.addMessage(str(form))
+            self.addMessage(str(form))
             print form
             for xss in xss_rsnake:
                 try:
@@ -165,7 +177,7 @@ class Test():
                     # self.__ghost.click("a[class='search_btn search_btn_enter_ba j_enter_ba']", expect_loading=True)
                     try:
                         result, resources = self.__ghost.wait_for_alert(timeout=alert_timeout)
-                        # self.addMessage('<b>alert: %s</b>' % result)
+                        self.addMessage('<b>alert: %s</b>' % result)
                         print 'alert: %s' % result
                         if result == 'XSS':
                             break
@@ -173,11 +185,10 @@ class Test():
                         pass
                     finally:
                         url, resources = self.__ghost.evaluate('window.location.href')
-                        # self.addMessage('<font color=red>%s</font>' % str(url))
+                        self.addMessage("<font color=blue><a href='%s'>%s</a></font>" % str(url))
                         print url
                         # capture_page(self.__ghost, url)
                 except TimeoutError:
-                    # self.addMessage('<b>testFormsWithGhost: TimeoutError</b>' % str(url))
                     print "testFormsWithGhost: TimeoutError"
         return
     
@@ -225,9 +236,6 @@ class Test():
 
 
 if __name__ == '__main__':
-    "http://127.0.0.1/dvwa/vulnerabilities/xss_r/", "http://www.iqiyi.com/", "http://www.sina.com.cn/", "http://www.zhaopin.com", "http://www.u17.com"
-    
-    sites = ["http://www.sina.com.cn/"]
     start = time.clock()
     for location in sites:
         t = Test(location)
