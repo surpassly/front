@@ -11,7 +11,6 @@ from sites import*
 page_timeout = 60
 alert_timeout = 3
 
-xss_rsnake = ["math", "computer"]  # fuzzdb.attack_payloads.xss.xss_rsnake[:2]
 
 def dvwa_security(ghost, level):
     ghost.open('http://127.0.0.1/dvwa/')
@@ -32,7 +31,7 @@ def get_attrs(list, soup):
     val = []
     for attr in list:
         val.append(soup[attr] if attr in soup.attrs else '')
-    val.append(soup.prettify()) # outerHTML
+    val.append(soup.prettify())  # outerHTML
     return val
             
     
@@ -44,8 +43,8 @@ def capture_page(ghost, url):
 class Test():
     def __init__(self, location, mainwindow = None):
         self.mainwindow = mainwindow
-        self.addMessage("<b>%s...opening</b>" % location)
-        print "%s...opening" % location
+        self.addMessage("<b>%s ...opening</b>" % location)
+        print "%s ...opening" % location
         self.__ghost = Ghost(wait_timeout=page_timeout, download_images=False, display=True)
         # dvwa_security(self.__ghost, "low")
         try:
@@ -61,17 +60,12 @@ class Test():
         self.location = location
         soup = BeautifulSoup(str(self.__ghost.content), from_encoding='utf-8')
         self.__getInputsAndForms(soup)
-        self.testFormsWithGhost()
-        if self.mainwindow:
-            self.mainwindow.go_button.setDisabled(False)
-        self.__ghost.hide()
-        self.__ghost.sleep(60)
-        self.__ghost.exit()
+        self.xss_rsnake = ["math", "computer"]  # fuzzdb.attack_payloads.xss.xss_rsnake[:2]
 
     def addMessage(self, content, widget=None):
         if self.mainwindow:
             self.mainwindow.addMessage(content, widget)
-   
+
     def __convertAction(self, action):
         host = slash(self.host)
         action = action.strip()
@@ -144,11 +138,11 @@ class Test():
                         self.__buttons.remove(i)
             self.addMessage(str(form), 'form')        
         for a in self.__as:
-            self.addMessage(a.outerHTML, 'input')
+            self.addMessage(str(a), 'a')
         for input in self.__inputs:
-            self.addMessage(input.outerHTML, 'input')
+            self.addMessage(str(input), 'input')
         for button in self.__buttons:
-            self.addMessage(button.outerHTML, 'button')
+            self.addMessage(str(button), 'button')
         return
             
     def testFormsWithGhost(self):        
@@ -157,7 +151,7 @@ class Test():
             # print doc
             self.addMessage(str(form))
             print form
-            for xss in xss_rsnake:
+            for xss in self.xss_rsnake:
                 try:
                     self.__ghost.open(self.location)
                     self.__ghost.evaluate('''
@@ -185,11 +179,16 @@ class Test():
                         pass
                     finally:
                         url, resources = self.__ghost.evaluate('window.location.href')
-                        self.addMessage("<font color=blue><a href='%s'>%s</a></font>" % str(url))
+                        self.addMessage("<a href='%s'>%s</a>" % (url, url))
                         print url
                         # capture_page(self.__ghost, url)
                 except TimeoutError:
                     print "testFormsWithGhost: TimeoutError"
+        # exit
+        if self.mainwindow:
+            self.mainwindow.go_button.setDisabled(False)
+        self.__ghost.hide()
+        self.__ghost.sleep(60)
         return
     
     def testForm(self, form):
@@ -197,7 +196,7 @@ class Test():
         if form.method == "post":
             print "post: pass"
             return
-        for xss in xss_rsnake:
+        for xss in self.xss_rsnake:
             postdata = ''
             for i in form.inputs:
                 if i.name != '':
@@ -220,7 +219,6 @@ class Test():
                 pass
         return
     
-    
     def __str__(self):
         r = ""
         for input in self.__inputs:
@@ -229,7 +227,6 @@ class Test():
             r += str(form) + '\n'
         return r if r != "" else "InitError"
 
-        
     def __del__(self):
         # self.__ghost.exit()
         return
@@ -239,5 +236,6 @@ if __name__ == '__main__':
     start = time.clock()
     for location in sites:
         t = Test(location)
+        t.testFormsWithGhost()
     end = time.clock()
     print 'time:', end - start

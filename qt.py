@@ -13,14 +13,20 @@ class MainWindow(QMainWindow):
         self.setWindowTitle('Test')  
         self.initMenu()
         self.initUI()
-        
+
+    def closeEvent(self, event):
+        sys.exit()
+
+    def setVector(self):
+        return
+
     def addMessage(self, content, widget=None):
         if widget == 'form':
             self.tabwidget.setCurrentIndex(1)
             self.form_tab.append(content)
         elif widget == 'a':
             self.tabwidget.setCurrentIndex(2)
-            self.input_tab.append(content)
+            self.a_tab.append(content)
         elif widget == 'input':
             self.tabwidget.setCurrentIndex(3)
             self.input_tab.append(content)
@@ -38,9 +44,10 @@ class MainWindow(QMainWindow):
         exit.setShortcut('Ctrl+Q')
         exit.triggered.connect(sys.exit)
         self.filemenu.addAction(exit)
-
-    def closeEvent(self, event):
-        sys.exit()
+        self.setmenu = menubar.addMenu('&Settings')
+        vector = QAction(QIcon('vector.png'), '&Vector', self)
+        vector.triggered.connect(self.setVector)
+        self.setmenu.addAction(vector)
 
     def initUI(self):
         mainwidget = QWidget()    
@@ -52,28 +59,35 @@ class MainWindow(QMainWindow):
         self.go_button = QPushButton("Go")
         self.connect(self.go_button, SIGNAL("clicked()"), self.goTest)
         grid.addWidget(self.go_button, 0, 1)
-        self.initTabwidget()
+        self.initTabWidget()
         grid.addWidget(self.tabwidget, 1, 0, 1, 2)
         mainwidget.setLayout(grid)
         self.setCentralWidget(mainwidget)
     
-    def initTabwidget(self):
-        self.tabwidget = QTabWidget() 
+    def initTabWidget(self):
+        self.tabwidget = QTabWidget()
         self.console_tab = QTextBrowser()
         self.a_tab = QTextBrowser()
         self.input_tab = QTextBrowser()
         self.button_tab = QTextBrowser()
         self.form_tab = QTextBrowser()
+        for tab in [self.console_tab, self.a_tab, self.input_tab, self.button_tab, self.form_tab]:
+            tab.setWordWrapMode(QTextOption.NoWrap)
         self.tabwidget.addTab(self.console_tab, 'Console')
         self.tabwidget.addTab(self.form_tab, '<form>')
         self.tabwidget.addTab(self.a_tab, '<a>')
         self.tabwidget.addTab(self.input_tab, '<input>')
         self.tabwidget.addTab(self.button_tab, '<button>')
-        
+
     def goTest(self):
         self.go_button.setDisabled(True)
+        for tab in [self.console_tab, self.a_tab, self.input_tab, self.button_tab, self.form_tab]:
+            tab.clear()
         url = unicode(self.urlText.text(), encoding="utf-8")
-        Test(url, self)
+        t = Test(url, self)  # self.go_button.setDisabled(False)
+        t.testFormsWithGhost()
+        del t
+        print 'Finish'
         return
         
 if __name__ == '__main__':
