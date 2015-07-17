@@ -8,7 +8,7 @@ class Action:
 
 
 class Form:
-    def __init__(self, action, id, method, name, as_, inputs, buttons, outerHTML):
+    def __init__(self, action, id, method, name, outerHTML, as_, inputs, buttons):
         self.action = action
         self.id = id
         self.method = method
@@ -20,8 +20,7 @@ class Form:
 
     def __str__(self):
         s = "<form action='%s' id='%s' method='%s' name='%s'>\n" % (self.action, self.id, self.method, self.name)
-        for a in self.as_:
-            s += '    ' + a.outerHTML + '\n'
+        s += '    <a>: %d\n' % len(self.as_)
         for input in self.inputs:
             s += '    ' + str(input) + '\n'
         for button in self.buttons:

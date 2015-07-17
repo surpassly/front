@@ -44,8 +44,8 @@ def capture_page(ghost, url):
 class Test():
     def __init__(self, location, mainwindow = None):
         self.mainwindow = mainwindow
-        self.addMessage("<b>%s...opening</b>" % location)
-        print "%s...opening" % location
+        self.addMessage("<b>%s ...opening</b>" % location)
+        print "%s ...opening" % location
         self.__ghost = Ghost(wait_timeout=page_timeout, download_images=False, display=True)
         # dvwa_security(self.__ghost, "low")
         try:
@@ -185,7 +185,7 @@ class Test():
                         pass
                     finally:
                         url, resources = self.__ghost.evaluate('window.location.href')
-                        self.addMessage("<font color=blue><a href='%s'>%s</a></font>" % str(url))
+                        self.addMessage("<a href='%s'>%s</a>" % (url, url))
                         print url
                         # capture_page(self.__ghost, url)
                 except TimeoutError:
