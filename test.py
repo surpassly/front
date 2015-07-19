@@ -11,7 +11,6 @@ from sites import*
 page_timeout = 60
 alert_timeout = 3
 
-
 def dvwa_security(ghost, level):
     ghost.open('http://127.0.0.1/dvwa/')
     ghost.fill("form", {"username": 'admin', "password": 'password'})

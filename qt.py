@@ -14,8 +14,8 @@ class MainWindow(QMainWindow):
         self.initMenu()
         self.initUI()
 
-    def closeEvent(self, event):
-        sys.exit()
+    #def closeEvent(self, event):
+        #sys.exit()
 
     def setVector(self):
         return
