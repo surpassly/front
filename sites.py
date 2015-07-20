@@ -1,11 +1,12 @@
 # _*_coding:utf-8_*_
 
 sites = [
-# "http://127.0.0.1/dvwa/vulnerabilities/xss_r/",
-# 复杂页面  多个搜索类别共用一个表单 通过hidden参数改变类别 同时搜索值也是一个hidden参数 由脚本更改后提交 "http://www.sina.com.cn/",
-# 没有表单 但可以提交意见 "http://cbg.baidu.com/?sc=1000020",
+"http://www.baidu.com",
+"http://127.0.0.1/dvwa/vulnerabilities/xss_r/",
 # 没有表单 直接从input提交
 "http://www.u17.com",
+# 复杂页面  多个搜索类别共用一个表单 通过hidden参数改变类别 同时搜索值也是一个hidden参数 由脚本更改后提交 "http://www.sina.com.cn/",
+# 没有表单 但可以提交意见 "http://cbg.baidu.com/?sc=1000020",
 # "http://www.kaixin001.com",
 # 复杂页面 "http://map.baidu.com",
 # 无法打开 "http://weibo.com/",
