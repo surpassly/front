@@ -11,6 +11,7 @@ from sites import*
 page_timeout = 60
 alert_timeout = 3
 
+
 def dvwa_security(ghost, level):
     ghost.open('http://127.0.0.1/dvwa/')
     ghost.fill("form", {"username": 'admin', "password": 'password'})
@@ -59,29 +60,18 @@ class Test():
         self.location = location
         soup = BeautifulSoup(str(self.__ghost.content), from_encoding='utf-8')
         self.__getInputsAndForms(soup)
-        self.xss_rsnake = ["math", "computer"]  # fuzzdb.attack_payloads.xss.xss_rsnake[:2]
+        self.xss_rsnake = fuzzdb.attack_payloads.xss.xss_rsnake[:2]  # ["math", "computer"]
+        self.testInputsWithGhost()
+        self.testFormsWithGhost()
+        if self.mainwindow:
+            self.mainwindow.go_button.setDisabled(False)
+        self.__ghost.hide()
+        self.__ghost.sleep(60)
+        # exit
 
     def addMessage(self, content, widget=None):
         if self.mainwindow:
             self.mainwindow.addMessage(content, widget)
-
-    def __convertAction(self, action):
-        host = slash(self.host)
-        action = action.strip()
-        if action.startswith("http"):
-            action = slash(action)
-        elif action.startswith("//"):
-            action = "http:" + action  # //www.baidu.com/s
-        elif action.startswith("#") or action == '':
-            action = slash(self.location)
-        else:
-            if action.startswith('/'):
-                action = host + action[1:]
-            else:
-                action = host + action
-        if action.endswith('?'):
-            action = action[:-1]
-        return action         
         
     def __getInputsAndForms(self, soup):
         # <a>
@@ -92,7 +82,7 @@ class Test():
         # <input>
         bs_inputs = soup.find_all('input')
         for bs_input in bs_inputs:
-            attrs = get_attrs(["id", "name", "type", "value"], bs_input)
+            attrs = get_attrs(["class", "id", "name", "type", "value"], bs_input)
             self.__inputs.append(Input(*attrs))
         # <button>
         bs_buttons = soup.find_all('button')
@@ -121,7 +111,6 @@ class Test():
             attrs.append(form_inputs)
             attrs.append(form_buttons)
             self.__forms.append(Form(*attrs))
-
         for form in self.__forms:
             for a in form.as_:
                 for i in self.__as:
@@ -143,53 +132,96 @@ class Test():
         for button in self.__buttons:
             self.addMessage(str(button), 'button')
         return
-            
-    def testFormsWithGhost(self):        
+
+    def __identifyXSS(self):
+        flag = False
+        try:
+            result, resources = self.__ghost.wait_for_alert(timeout=alert_timeout)
+            self.addMessage('<b>alert: %s</b>' % result)
+            print 'alert: %s' % result
+            if result == 'XSS':
+                flag = True  # identified
+        except TimeoutError:
+            pass
+        finally:
+            url, resources = self.__ghost.evaluate('window.location.href')
+            self.addMessage("<a href='%s'>%s</a>" % (url, url))
+            #print url
+            # capture_page(self.__ghost, url)
+        return flag
+
+    def testInputsWithGhost(self):
+        for i, input in enumerate(self.__inputs):
+            if input.type == 'button':
+                for xss in self.xss_rsnake:
+                    print xss
+                    xss = xss.replace('"', '\\"')
+                    try:
+                        self.__ghost.open(self.location)
+                        self.__ghost.evaluate('''
+                        var tagElements = document.getElementsByTagName('input');
+                        for (var i = 0; i < tagElements.length; i++){
+                            var input = tagElements[i]
+                            if (input.type == "" || input.type == "text" || input.type == "password" || (input.type == "hidden" && input.value == "")) {
+                                input.removeAttribute('onfocus');
+                                input.value = "%s";
+                            }
+                        }''' % xss)
+                        self.__ghost.click("input[class='%s']" % str(input.class_[0]), expect_loading=True)
+                        if self.__identifyXSS():
+                            continue  # break
+                    except TimeoutError:
+                        print "testInputsWithGhost: TimeoutError"
+        return
+
+    def testFormsWithGhost(self):
         for i, form in enumerate(self.__forms): 
-            # doc, res = self.__ghost.evaluate("document.querySelectorAll('form')[%d].parentNode.outerHTML;" % i)
-            # print doc
             self.addMessage(str(form))
             print form
             for xss in self.xss_rsnake:
+                # xss = xss.replace('"', '\\"')
+                # print xss
                 try:
                     self.__ghost.open(self.location)
                     self.__ghost.evaluate('''
                     var form = document.querySelectorAll('form')[%d];
-                    var tagElements = form.parentNode.getElementsByTagName('input');
-                    for (var i = 0; i < tagElements.length; i++){                      
+                    var tagElements = form.getElementsByTagName('input');
+                    for (var i = 0; i < tagElements.length; i++){
                         var input = tagElements[i]
                         if (input.type == "" || input.type == "text" || input.type == "password" || (input.type == "hidden" && input.value == "")) {
                             input.removeAttribute('onfocus');
-                            input.value = '%s';
+                            input.value = "%s";
                         }
                     }
                     form.target = '_self';
-                    form['submit']();''' % (i, xss), expect_loading=True)   
+                    form['submit']();''' % (i, xss), expect_loading=True)
                     # self.__ghost.click("input[type=submit]", expect_loading=True)
                     # self.__ghost.click('button[class=doSearch]', expect_loading=True)
                     # self.__ghost.click("a[class='search_btn search_btn_enter_ba j_enter_ba']", expect_loading=True)
-                    try:
-                        result, resources = self.__ghost.wait_for_alert(timeout=alert_timeout)
-                        self.addMessage('<b>alert: %s</b>' % result)
-                        print 'alert: %s' % result
-                        if result == 'XSS':
-                            break
-                    except TimeoutError:
-                        pass
-                    finally:
-                        url, resources = self.__ghost.evaluate('window.location.href')
-                        self.addMessage("<a href='%s'>%s</a>" % (url, url))
-                        print url
-                        # capture_page(self.__ghost, url)
+                    if self.__identifyXSS():
+                        continue  # break
                 except TimeoutError:
                     print "testFormsWithGhost: TimeoutError"
-        # exit
-        if self.mainwindow:
-            self.mainwindow.go_button.setDisabled(False)
-        self.__ghost.hide()
-        self.__ghost.sleep(60)
         return
-    
+
+    def __convertAction(self, action):
+        host = slash(self.host)
+        action = action.strip()
+        if action.startswith("http"):
+            action = slash(action)
+        elif action.startswith("//"):
+            action = "http:" + action  # //www.baidu.com/s
+        elif action.startswith("#") or action == '':
+            action = slash(self.location)
+        else:
+            if action.startswith('/'):
+                action = host + action[1:]
+            else:
+                action = host + action
+        if action.endswith('?'):
+            action = action[:-1]
+        return action
+
     def testForm(self, form):
         print form
         if form.method == "post":
@@ -203,38 +235,29 @@ class Test():
                         postdata += '%s=%s&' % (i.name, urllib2.quote(xss))
                     elif i.type == 'hidden' and i.value != '':
                         postdata += '%s=%s&' % (i.name, i.value)  # hidden
-            location = self.__convertAction(form.action) + '?' + postdata   
+            location = self.__convertAction(form.action) + '?' + postdata
             print location
             try:
                 self.__ghost.open(location)
             except TimeoutError:
                 print "test_method: TimeoutError"
-            try:
-                result, resources = self.__ghost.wait_for_alert(timeout=alert_timeout)
-                print 'alert:', result
-                if result == 'XSS':
-                    break
-            except TimeoutError:
-                pass
+            if self.__identifyXSS():
+                break
         return
-    
+
     def __str__(self):
         r = ""
         for input in self.__inputs:
-            r += str(input) + '\n' 
+            r += str(input) + '\n'
         for form in self.__forms:
             r += str(form) + '\n'
-        return r if r != "" else "InitError"
-
-    def __del__(self):
-        # self.__ghost.exit()
-        return
+        return r[:-1] if r != "" else "InitError"
 
 
 if __name__ == '__main__':
     start = time.clock()
     for location in sites:
         t = Test(location)
-        t.testFormsWithGhost()
+        break
     end = time.clock()
     print 'time:', end - start

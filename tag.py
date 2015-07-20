@@ -37,7 +37,8 @@ class A:
         return "<a' href='%s'>" % self.href
 
 class Input:
-    def __init__(self, id, name, type, value, outerHTML):
+    def __init__(self, class_, id, name, type, value, outerHTML):
+        self.class_ = class_
         self.id = id
         self.name = name
         self.type = type
@@ -45,16 +46,16 @@ class Input:
         self.outerHTML = outerHTML.replace('\n', '')
         
     def __str__(self):
-        return "<input id='%s' name='%s' type='%s', value='%s'>" % (self.id, self.name, self.type, self.value)
+        return "<input class= '%s'id='%s' name='%s' type='%s', value='%s'>" % (self.class_, self.id, self.name, self.type, self.value)
     
 
 class Button:
-    def __init__(self, classname, id, name, type, outerHTML):
-        self.classname = classname
+    def __init__(self, class_, id, name, type, outerHTML):
+        self.class_ = class_
         self.id = id
         self.name = name
         self.type = type
         self.outerHTML = outerHTML.replace('\n', '')
         
     def __str__(self):
-        return "<button class = '%s' id='%s' name='%s' type='%s'>" % (self.classname, self.id, self.name, self.type)
+        return "<button class = '%s' id='%s' name='%s' type='%s'>" % (self.class_, self.id, self.name, self.type)

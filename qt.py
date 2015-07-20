@@ -85,7 +85,6 @@ class MainWindow(QMainWindow):
             tab.clear()
         url = unicode(self.urlText.text(), encoding="utf-8")
         t = Test(url, self)  # self.go_button.setDisabled(False)
-        t.testFormsWithGhost()
         del t
         print 'Finish'
         return
