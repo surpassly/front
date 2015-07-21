@@ -1,9 +1,11 @@
 # _*_coding:utf-8_*_
 reload(__import__('sys')).setdefaultencoding('utf-8') 
 
-import time, urllib2, urlparse, os
+import time
+import urlparse
+import os
 from ghost import Ghost, TimeoutError
-from pywebfuzz import utils, fuzzdb
+from pywebfuzz import fuzzdb
 from bs4 import BeautifulSoup
 from tag import *
 from sites import*
@@ -38,10 +40,9 @@ def get_attrs(list, soup):
 class Test():
     def __init__(self, location, mainwindow = None):
         self.mainwindow = mainwindow
-        print "%s ...opening" % location
-        self.addMessage("<b>%s ...opening</b>" % location)
+        self.display("%s ...opening" % location, '<b>$</b>')
         self.__ghost = Ghost(wait_timeout=page_timeout, download_images=False, display=True)
-        dvwa_security(self.__ghost, "low")
+        # dvwa_security(self.__ghost, "low")
         try:
             self.__ghost.open(location)
         except TimeoutError:
@@ -53,40 +54,30 @@ class Test():
         self.location = location
         soup = BeautifulSoup(str(self.__ghost.content), from_encoding='utf-8')
         self.__get_inputs_forms(soup)
-        print self
-        self.addMessage("%s" % str(self))
-        self.xss_rsnake = fuzzdb.attack_payloads.xss.xss_rsnake[:]  # ["math", "computer"]
-        # self.test_inputs_ghost()
-        self.test_forms_ghost()
-        # for form in self.__forms:
-            # self.test_form(form)
-        if self.mainwindow:
-            self.mainwindow.go_button.setDisabled(False)
-        self.__ghost.hide()
-        self.__ghost.sleep(60)
-        # exit
+        self.xss_rsnake = ["math"] + fuzzdb.attack_payloads.xss.xss_rsnake[:]
 
-    def addMessage(self, content, widget=None):
+    def display(self, content, format=None, widget=None):
+        print content
         if self.mainwindow:
-            self.mainwindow.addMessage(content, widget)
+            self.mainwindow.display(content, format, widget)
         
     def __get_inputs_forms(self, soup):
-        # <a>
+        # a
         bs_as = soup.find_all('a')
         for bs_a in bs_as:
             attrs = get_attrs(["href"], bs_a)
             self.__as.append(A(*attrs))
-        # <input>
+        # input
         bs_inputs = soup.find_all('input')
         for bs_input in bs_inputs:
             attrs = get_attrs(["class", "id", "name", "type", "value"], bs_input)
             self.__inputs.append(Input(*attrs))
-        # <button>
+        # button
         bs_buttons = soup.find_all('button')
         for bs_button in bs_buttons:
             attrs = get_attrs(["class", "id", "name", "type"], bs_button)
             self.__buttons.append(Button(*attrs))
-        # <form>
+        # form
         bs_forms = soup.find_all('form')
         for bs_form in bs_forms:
             form_as = []
@@ -121,36 +112,14 @@ class Test():
                 for i in self.__buttons:
                     if button.outerHTML == i.outerHTML:
                         self.__buttons.remove(i)
-            self.addMessage(str(form), 'form')        
-        for a in self.__as:
-            self.addMessage(str(a), 'a')
-        for input in self.__inputs:
-            self.addMessage(str(input), 'input')
-        for button in self.__buttons:
-            self.addMessage(str(button), 'button')
         return
-
-    def __identifyXSS(self):
-        flag = False
-        try:
-            result, resources = self.__ghost.wait_for_alert(timeout=alert_timeout)
-            self.addMessage('<b>alert: %s</b>' % result)
-            print 'alert: %s' % result
-            if result == 'XSS':
-                flag = True  # identified
-        except TimeoutError:
-            pass
-        finally:
-            # url, resources = self.__ghost.evaluate('window.location.href')
-            # self.addMessage("<a href='%s'>%s</a>" % (url, url))
-            # print url
-            return flag
 
     def test_inputs_ghost(self):
         for i, input in enumerate(self.__inputs):
+            self.display(str(input))
             if input.type == 'button':
                 for j, xss in enumerate(self.xss_rsnake):
-                    print xss
+                    self.display(xss, widget='xss')
                     xss = xss.replace('"', '\\"')
                     try:
                         self.__ghost.open(self.location)
@@ -167,15 +136,16 @@ class Test():
                         self.__identifyXSS()
                         self.capture_page(j)
                     except TimeoutError:
-                        print "test_inputs: TimeoutError"
+                        self.display("test_inputs: TimeoutError", '<font color=red>$</font>', 'xss')
+                if self.mainwindow:
+                    self.mainwindow.xss_split.clear()
         return
 
     def test_forms_ghost(self):
-        for i, form in enumerate(self.__forms): 
-            # print form
-            # self.addMessage(str(form))
+        for i, form in enumerate(self.__forms):
+            self.display(str(form))
             for j, xss in enumerate(self.xss_rsnake):
-                print xss
+                self.display(xss, widget='xss')
                 xss = xss.replace('"', '\\"')
                 try:
                     self.__ghost.open(self.location)
@@ -197,8 +167,24 @@ class Test():
                     self.__identifyXSS()
                     self.capture_page(j)
                 except TimeoutError:
-                    print "test_forms: TimeoutError"
+                    self.display("test_forms: TimeoutError", '<font color=red>$</font>', 'xss')
+            if self.mainwindow:
+                self.mainwindow.xss_split.clear()
         return
+
+    def __identifyXSS(self):
+        flag = False
+        try:
+            result, resources = self.__ghost.wait_for_alert(timeout=alert_timeout)
+            self.display('alert: %s' % result, '<b>$</b>', 'xss')
+            if result == 'XSS':
+                flag = True  # identified
+        except TimeoutError:
+            pass
+        finally:
+            # url, resources = self.__ghost.evaluate('window.location.href')
+            # self.display(str(url))
+            return flag
 
     def capture_page(self, j):
         r = urlparse.urlparse(self.location)
@@ -258,11 +244,21 @@ class Test():
             r += str(form) + '\n'
         return r[:-1] if r != "" else "InitError"
 
+    def go(self):
+        self.test_forms_ghost()
+        self.test_inputs_ghost()
+        # exit
+        if self.mainwindow:
+            self.mainwindow.go_button.setDisabled(False)
+        self.__ghost.hide()
+        self.__ghost.sleep(60)
+
 
 if __name__ == '__main__':
     start = time.clock()
     for location in sites:
         t = Test(location)
+        t.go()
         break
     end = time.clock()
     print 'time:', end - start

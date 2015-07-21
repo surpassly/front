@@ -2,7 +2,7 @@
 
 sites = [
 "http://www.baidu.com",
-"http://127.0.0.1/dvwa/vulnerabilities/xss_r/",
+# "http://127.0.0.1/dvwa/vulnerabilities/xss_r/",
 # 没有表单 直接从input提交
 "http://www.u17.com",
 # 复杂页面  多个搜索类别共用一个表单 通过hidden参数改变类别 同时搜索值也是一个hidden参数 由脚本更改后提交 "http://www.sina.com.cn/",
