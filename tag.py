@@ -1,14 +1,8 @@
 # _*_coding:utf-8_*_
 
 
-class Action:
-    def __init__(self, path, params):
-        self.path = path
-        self.params = params
-
-
 class Form:
-    def __init__(self, action, id, method, name, outerHTML, as_, inputs, buttons):
+    def __init__(self, action, id, method, name, outerHTML, as_, inputs, buttons, textareas):
         self.action = action
         self.id = id
         self.method = method
@@ -17,24 +11,32 @@ class Form:
         self.as_ = as_
         self.inputs = inputs
         self.buttons = buttons
+        self.textareas = textareas
 
     def __str__(self):
         s = "<form action='%s' id='%s' method='%s' name='%s'>\n" % (self.action, self.id, self.method, self.name)
-        s += '    <a>: %d\n' % len(self.as_)
+        if len(self.as_) > 10:
+            s += '    <a>: %d\n' % len(self.as_)
+        else:
+            for a in self.as_:
+                s += '   %s\n' % a
         for input in self.inputs:
-            s += '    ' + str(input) + '\n'
+            s += '   %s\n' % input
         for button in self.buttons:
-            s += '    ' + str(button) + '\n'
+            s += '   %s\n' % button
+        for textarea in self.textareas:
+            s += '   %s\n' % textarea
         s += "</form>"
         return s
 
 class A:
-    def __init__(self, href, outerHTML):
+    def __init__(self, class_, href, outerHTML):
+        self.class_ = class_
         self.href = href
         self.outerHTML = outerHTML.replace('\n', '')
 
     def __str__(self):
-        return "<a' href='%s'>" % self.href
+        return "<a class='%s' href='%s'>" % (self.class_, self.href)
 
 class Input:
     def __init__(self, class_, id, name, type, value, outerHTML):
@@ -59,3 +61,15 @@ class Button:
         
     def __str__(self):
         return "<button class = '%s' id='%s' name='%s' type='%s'>" % (self.class_, self.id, self.name, self.type)
+
+
+class TextArea:
+    def __init__(self, class_, id, name, value, outerHTML):
+        self.class_ = class_
+        self.id = id
+        self.name = name
+        self.value = value
+        self.outerHTML = outerHTML.replace('\n', '')
+
+    def __str__(self):
+        return "<textarea class = '%s' id='%s' name='%s' value='%s'>" % (self.class_, self.id, self.name, self.value)

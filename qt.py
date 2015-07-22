@@ -16,11 +16,11 @@ class VectorTable(QTableWidget):
         self.resize(300, 600)
         self.setColumnCount(2)
         self.setHorizontalHeaderLabels(["", "XSS Payloads"])
-        self.setRowCount(80)
+        self.setRowCount(73)
         self.setAlternatingRowColors(True)
         self.setColumnWidth(0, 30)
         self.horizontalHeader().setStretchLastSection(True)
-        self.xss_rsnake = ['math'] + fuzzdb.attack_payloads.xss.xss_rsnake[:]
+        self.xss_rsnake = fuzzdb.attack_payloads.xss.xss_rsnake
         for i, xss in enumerate(self.xss_rsnake):
             cb = QTableWidgetItem()
             cb.setCheckState(Qt.Checked)
@@ -43,16 +43,19 @@ class MainWindow(QMainWindow):
     def display(self, content, format=None, widget=None):
         content = self.tr(content)
         if widget == 'xss':
-            content = content.replace("<", "&lt;").replace(">", "&gt;")
-            if format:
-                content = format.replace('$', content)
             self.tabwidget.setCurrentIndex(0)
-            self.xss_split.append(content)
+            w = self.xss_split
         else:
-            if format:
-                content = format.replace('$', content)
             self.tabwidget.setCurrentIndex(0)
-            self.console_split.append(content)
+            w = self.console_split
+        if format:
+            content = format.replace('$', content)
+            w.append(content)
+        else:
+            w.append('')
+            w.insertPlainText(content)
+        # vb = w.verticalScrollBar()
+        # vb.setValue(vb.maximum())
 
     def initMenu(self):
         menubar = self.menuBar()

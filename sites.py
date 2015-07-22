@@ -1,13 +1,13 @@
 # _*_coding:utf-8_*_
 
 sites = [
-"http://www.baidu.com",
+# "http://www.baidu.com",
+# 没有提交按钮 是超链接 可以通过构造参数提交 "http://tieba.baidu.com/",
 # "http://127.0.0.1/dvwa/vulnerabilities/xss_r/",
-# 没有表单 直接从input提交
-"http://www.u17.com",
-# 复杂页面  多个搜索类别共用一个表单 通过hidden参数改变类别 同时搜索值也是一个hidden参数 由脚本更改后提交 "http://www.sina.com.cn/",
-# 没有表单 但可以提交意见 "http://cbg.baidu.com/?sc=1000020",
-# "http://www.kaixin001.com",
+# 没有表单 直接从input提交 "http://www.u17.com",
+# 复杂页面 多个搜索类别共用一个表单 通过hidden参数改变类别 同时搜索值也是一个hidden参数 由脚本更改后提交 "http://www.sina.com.cn/",
+# 没有表单 但可以提交意见
+# "http://cbg.baidu.com/?sc=1000020",
 # 复杂页面 "http://map.baidu.com",
 # 无法打开 "http://weibo.com/",
 # 有post表单 "http://www.sohu.com/",
@@ -22,12 +22,11 @@ sites = [
 # "http://www.12306.cn/",
 # 报错 "http://www.ganji.com/",
 # 有post表单 "http://www.lianjia.com/",
-# 无法打开 "http://www.meipai.com",
+#
+"http://www.meipai.com",
 # 参数太多无法模拟提交 "http://www.zhaopin.com",
 # "http://www.ccb.com/",
-# "http://www.juanpi.com/?utm=101865",
-"http://www.yougou.com/?utm_source=AD_LkiCFBvBt",
-"http://rd.da.netease.com/redirect?t=geWAxF&p=wH4H6k&proId=1024&target=http%3A%2F%2Fwww.kaola.com",
+# 没有表单 通过点击span提交 "http://www.kaola.com/?__da_wH4H6k_geWAxF",
 "http://jingyan.baidu.com/z/goufang/index.html",
 "http://wenku.baidu.com/album/view/98b20f0bbb68a98271fefa55",
 "http://house.ifeng.com/detail/2015_01_28/50246785_0.shtml",
@@ -77,7 +76,6 @@ sites = [
 "http://www.1ting.com/",
 "http://www.kugou.com/",
 "http://www.kuwo.cn/",
-"http://tieba.baidu.com/",
 "http://www.tianya.cn/",
 "http://www.jiayuan.com/",
 "http://www.zhenai.com/",

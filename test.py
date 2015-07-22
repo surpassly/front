@@ -1,16 +1,15 @@
 # _*_coding:utf-8_*_
-reload(__import__('sys')).setdefaultencoding('utf-8') 
+reload(__import__('sys')).setdefaultencoding('utf-8')
 
-import time
+import os, time, random, string
 import urlparse
-import os
 from ghost import Ghost, TimeoutError
 from pywebfuzz import fuzzdb
 from bs4 import BeautifulSoup
 from tag import *
-from sites import*
+from sites import *
 
-page_timeout = 60
+page_timeout = 30
 alert_timeout = 3
 
 
@@ -21,6 +20,11 @@ def dvwa_security(ghost, level):
     ghost.open('http://127.0.0.1/dvwa/security.php')
     ghost.evaluate("document.getElementsByName('security')[0].value = '%s';" % level)
     ghost.click('input[type=submit]', expect_loading=True)
+
+
+def create_spy():
+    count = random.choice(range(5, 10))
+    return ''.join(random.choice(string.letters) for i in range(count))
 
 
 def slash(url):
@@ -37,8 +41,44 @@ def get_attrs(list, soup):
     return val
 
 
+def get_as(soup):
+    res = []
+    bs_as = soup.find_all('a')
+    for bs_a in bs_as:
+        attrs = get_attrs(["class", "href"], bs_a)
+        res.append(A(*attrs))
+    return res
+
+
+def get_inputs(soup):
+    res = []
+    bs_inputs = soup.find_all('input')
+    for bs_input in bs_inputs:
+        attrs = get_attrs(["class", "id", "name", "type", "value"], bs_input)
+        res.append(Input(*attrs))
+    return res
+
+
+def get_buttons(soup):
+    res = []
+    bs_buttons = soup.find_all('button')
+    for bs_button in bs_buttons:
+        attrs = get_attrs(["class", "id", "name", "type"], bs_button)
+        res.append(Button(*attrs))
+    return res
+
+
+def get_textareas(soup):
+    res = []
+    bs_textareas = soup.find_all('textarea')
+    for bs_textarea in bs_textareas:
+        attrs = get_attrs(["class", "id", "name", "value"], bs_textarea)
+        res.append(TextArea(*attrs))
+    return res
+
+
 class Test():
-    def __init__(self, location, mainwindow = None):
+    def __init__(self, location, mainwindow=None):
         self.mainwindow = mainwindow
         self.display("%s ...opening" % location, '<b>$</b>')
         self.__ghost = Ghost(wait_timeout=page_timeout, download_images=False, display=True)
@@ -50,129 +90,125 @@ class Test():
         self.__as = []
         self.__inputs = []
         self.__buttons = []
+        self.__textareas = []
         self.__forms = []
         self.location = location
         soup = BeautifulSoup(str(self.__ghost.content), from_encoding='utf-8')
-        self.__get_inputs_forms(soup)
-        self.xss_rsnake = ["math"] + fuzzdb.attack_payloads.xss.xss_rsnake[:]
+        self.__get_all_tags(soup)
+        self.display(str(self))
+        self.spy = [create_spy(), create_spy()]
+        self.xss_rsnake = fuzzdb.attack_payloads.xss.xss_rsnake[:2]
 
     def display(self, content, format=None, widget=None):
         print content
         if self.mainwindow:
+            # lines = content.split('\n')
+            # for l in lines:
+            # l = l.replace("<", "&lt;").replace(">", "&gt;").replace("&&", "&amp;")
             self.mainwindow.display(content, format, widget)
-        
-    def __get_inputs_forms(self, soup):
-        # a
-        bs_as = soup.find_all('a')
-        for bs_a in bs_as:
-            attrs = get_attrs(["href"], bs_a)
-            self.__as.append(A(*attrs))
-        # input
-        bs_inputs = soup.find_all('input')
-        for bs_input in bs_inputs:
-            attrs = get_attrs(["class", "id", "name", "type", "value"], bs_input)
-            self.__inputs.append(Input(*attrs))
-        # button
-        bs_buttons = soup.find_all('button')
-        for bs_button in bs_buttons:
-            attrs = get_attrs(["class", "id", "name", "type"], bs_button)
-            self.__buttons.append(Button(*attrs))
-        # form
+
+    def __get_all_tags(self, soup):
+        self.__as = get_as(soup)
+        self.__inputs = get_inputs(soup)
+        self.__buttons = get_buttons(soup)
+        self.__textareas = get_textareas(soup)
         bs_forms = soup.find_all('form')
         for bs_form in bs_forms:
-            form_as = []
-            bs_as = soup.find_all('a')
-            for bs_a in bs_as:
-                attrs = get_attrs(["href"], bs_a)
-                form_as.append(A(*attrs))
-            form_inputs = []
-            bs_inputs = bs_form.find_all('input')
-            for bs_input in bs_inputs:
-                attrs = get_attrs(["class", "id", "name", "type", "value"], bs_input)
-                form_inputs.append(Input(*attrs))
-            form_buttons = []
-            for bs_button in bs_buttons:
-                attrs = get_attrs(["class", "id", "name", "type"], bs_button)
-                form_buttons.append(Button(*attrs))
             attrs = get_attrs(["action", "id", "method", "name"], bs_form)
-            attrs.append(form_as)
-            attrs.append(form_inputs)
-            attrs.append(form_buttons)
+            for f in [get_as(bs_form), get_inputs(bs_form), get_buttons(bs_form), get_textareas(bs_form)]:
+                attrs.append(f)
             self.__forms.append(Form(*attrs))
+        # delete
         for form in self.__forms:
-            for a in form.as_:
-                for i in self.__as:
-                    if a.outerHTML == i.outerHTML:
-                        self.__as.remove(i)
-            for input in form.inputs:
-                for i in self.__inputs:
-                    if input.outerHTML == i.outerHTML:
-                        self.__inputs.remove(i)
-            for button in form.buttons:
-                for i in self.__buttons:
-                    if button.outerHTML == i.outerHTML:
-                        self.__buttons.remove(i)
+            f_list = [form.as_, form.inputs, form.buttons, form.textareas]
+            s_list = [self.__as, self.__inputs, self.__buttons, self.__textareas]
+            for i in range(0, len(f_list)):
+                for f in f_list[i]:
+                    for s in s_list[i]:
+                        if f.outerHTML == s.outerHTML:
+                            s_list[i].remove(s)
         return
 
     def test_inputs_ghost(self):
         for i, input in enumerate(self.__inputs):
             self.display(str(input))
-            if input.type == 'button':
-                for j, xss in enumerate(self.xss_rsnake):
-                    self.display(xss, widget='xss')
-                    xss = xss.replace('"', '\\"')
-                    try:
-                        self.__ghost.open(self.location)
-                        self.__ghost.evaluate('''
-                        var tagElements = document.getElementsByTagName('input');
-                        for (var i = 0; i < tagElements.length; i++){
-                            var input = tagElements[i]
-                            if (input.type == "" || input.type == "text" || input.type == "password" || (input.type == "hidden" && input.value == "")) {
-                                input.removeAttribute('onfocus');
-                                input.value = "%s";
-                            }
-                        }''' % xss)
-                        self.__ghost.click("input[class='%s']" % str(input.class_[0]), expect_loading=True)
-                        self.__identifyXSS()
-                        self.capture_page(j)
-                    except TimeoutError:
-                        self.display("test_inputs: TimeoutError", '<font color=red>$</font>', 'xss')
-                if self.mainwindow:
-                    self.mainwindow.xss_split.clear()
-        return
-
-    def test_forms_ghost(self):
-        for i, form in enumerate(self.__forms):
-            self.display(str(form))
-            for j, xss in enumerate(self.xss_rsnake):
+            if input.type not in ['button', 'submit']:
+                continue
+            flag = 0  # spy
+            for j, xss in enumerate(self.spy + self.xss_rsnake):
                 self.display(xss, widget='xss')
                 xss = xss.replace('"', '\\"')
                 try:
                     self.__ghost.open(self.location)
                     self.__ghost.evaluate('''
-                    var form = document.querySelectorAll('form')[%d];
-                    var tagElements = form.getElementsByTagName('input');
-                    for (var i = 0; i < tagElements.length; i++){
-                        var input = tagElements[i]
+                    var tagElements = document.getElementsByTagName("input");
+                    for (var i = 0; i < tagElements.length; i++) {
+                        var input = tagElements[i];
                         if (input.type == "" || input.type == "text" || input.type == "password" || (input.type == "hidden" && input.value == "")) {
-                            input.removeAttribute('onfocus');
-                            input.value = "%s";
+                            input.removeAttribute("onfocus");
+                            input.value = "%s"
+                        }
+                    };
+                    ''' % xss)
+                    self.__ghost.click("input[class='%s']" % str(' '.join(input.class_)), expect_loading=True)
+                    if j < len(self.spy) and not self.__identify_spy(xss):
+                        flag += 1
+                        if flag == len(self.spy):
+                            break
+                    self.__identify_xss()
+                    self.capture_page(i, j)
+                except TimeoutError:
+                    self.display("test_inputs: TimeoutError", '<font color=red>$</font>', 'xss')
+                    if j < len(self.spy):
+                        flag += 1
+                        if flag == len(self.spy):
+                            break
+
+    def test_forms_ghost(self):
+        for i, form in enumerate(self.__forms):
+            self.display(str(form))
+            flag = 0  # spy
+            for j, xss in enumerate(self.spy + self.xss_rsnake):
+                self.display(xss, widget='xss')
+                try:
+                    self.__ghost.open(self.location)
+                    self.__ghost.evaluate('''
+                    var form = document.querySelectorAll("form")[%d];
+                    var tagElements = form.getElementsByTagName("input");
+                    for (var i = 0; i < tagElements.length; i++) {
+                        var input = tagElements[i];
+                        if (input.type == "" || input.type == "text" || input.type == "password" || (input.type == "hidden" && input.value == "")) {
+                            input.removeAttribute("onfocus");
+                            input.value = "%s"
                         }
                     }
-                    form.target = '_self';
-                    form['submit']();''' % (i, xss), expect_loading=True)
-                    # self.__ghost.click("input[type=submit]", expect_loading=True)
+                    form.target = "_self";
+                    form["submit"]();''' % (i, xss.replace('"', '\\"')), expect_loading=True)
                     # self.__ghost.click('button[class=doSearch]', expect_loading=True)
                     # self.__ghost.click("a[class='search_btn search_btn_enter_ba j_enter_ba']", expect_loading=True)
-                    self.__identifyXSS()
-                    self.capture_page(j)
+                    if j < len(self.spy) and not self.__identify_spy(xss):
+                        flag += 1
+                        if flag == len(self.spy):
+                            break
+                    self.__identify_xss()
+                    self.capture_page(i, j)
                 except TimeoutError:
                     self.display("test_forms: TimeoutError", '<font color=red>$</font>', 'xss')
-            if self.mainwindow:
-                self.mainwindow.xss_split.clear()
-        return
+                    if j < len(self.spy):
+                        flag += 1
+                        if flag == len(self.spy):
+                            break
 
-    def __identifyXSS(self):
+    def __identify_spy(self, spy):
+        result = False
+        try:
+            result, resources = self.__ghost.wait_for_text(spy)
+        except TimeoutError:
+            pass
+        url, resources = self.__ghost.evaluate('window.location.href')
+        return result and str(url).find(spy) >= 0
+
+    def __identify_xss(self):
         flag = False
         try:
             result, resources = self.__ghost.wait_for_alert(timeout=alert_timeout)
@@ -186,14 +222,14 @@ class Test():
             # self.display(str(url))
             return flag
 
-    def capture_page(self, j):
+    def capture_page(self, i, j):
         r = urlparse.urlparse(self.location)
         dir = r.netloc + r.path.replace('/', '_')
         if not os.path.exists(os.getcwd() + '\\' + dir):
             os.mkdir(dir)
         w, res = self.__ghost.evaluate('document.body.scrollWidth')
         h, res = self.__ghost.evaluate('document.body.scrollHeight')
-        self.__ghost.capture_to(dir + '\\' + str(j) + ".png", region=(0, 0, w, h))
+        self.__ghost.capture_to(dir + '\\%d_%d.png' % (i, j), region=(0, 0, w, h))
 
     def convert_action(self, action):
         r = urlparse.urlparse(self.location)
@@ -233,19 +269,29 @@ class Test():
                 self.__ghost.open(location)
             except TimeoutError:
                 print "test: TimeoutError"
-            self.__identifyXSS()
+            self.__identify_xss()
         return
 
     def __str__(self):
-        r = ""
+        s = ""
+        if len(self.__as) > 10:
+            s += '<a>: %d\n' % len(self.__as)
+        else:
+            for a in self.__as:
+                s += '%s\n' % a
         for input in self.__inputs:
-            r += str(input) + '\n'
+            s += '%s\n' % input
+        for button in self.__buttons:
+            s += '%s\n' % button
+        for textarea in self.__textareas:
+            s += '%s\n' % textarea
         for form in self.__forms:
-            r += str(form) + '\n'
-        return r[:-1] if r != "" else "InitError"
+            s += '%s\n' % form
+        return s[:-1] if s != "" else "InitError"
 
     def go(self):
-        self.test_forms_ghost()
+        self.display('...testing', '<b>$</b>')
+        # self.test_forms_ghost()
         self.test_inputs_ghost()
         # exit
         if self.mainwindow:
