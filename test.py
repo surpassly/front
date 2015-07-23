@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 from tag import *
 from sites import *
 
-page_timeout = 30
+page_timeout = 45
 alert_timeout = 3
 
 
@@ -86,6 +86,8 @@ class Test():
         try:
             self.__ghost.open(location)
         except TimeoutError:
+            self.display("init: TimeoutError", '<font color=red>$</font>')
+            self.exit()
             return
         self.__as = []
         self.__inputs = []
@@ -97,7 +99,8 @@ class Test():
         self.__get_all_tags(soup)
         self.display(str(self))
         self.spy = [create_spy(), create_spy()]
-        self.xss_rsnake = fuzzdb.attack_payloads.xss.xss_rsnake[:2]
+        self.xss_rsnake = fuzzdb.attack_payloads.xss.xss_rsnake[:]  #　["<SCRIPT>alert(document.cookie);</SCRIPT>"] +
+        self.go()
 
     def display(self, content, format=None, widget=None):
         print content
@@ -205,8 +208,10 @@ class Test():
             result, resources = self.__ghost.wait_for_text(spy)
         except TimeoutError:
             pass
-        url, resources = self.__ghost.evaluate('window.location.href')
-        return result and str(url).find(spy) >= 0
+        finally:
+            url, resources = self.__ghost.evaluate('window.location.href')
+            self.display(str(url), widget='xss')
+        return result
 
     def __identify_xss(self):
         flag = False
@@ -217,10 +222,7 @@ class Test():
                 flag = True  # identified
         except TimeoutError:
             pass
-        finally:
-            # url, resources = self.__ghost.evaluate('window.location.href')
-            # self.display(str(url))
-            return flag
+        return flag
 
     def capture_page(self, i, j):
         r = urlparse.urlparse(self.location)
@@ -287,13 +289,16 @@ class Test():
             s += '%s\n' % textarea
         for form in self.__forms:
             s += '%s\n' % form
-        return s[:-1] if s != "" else "InitError"
+        return s[:-1] if s != "" else "init: Error"
 
     def go(self):
         self.display('...testing', '<b>$</b>')
-        # self.test_forms_ghost()
+        self.test_forms_ghost()
         self.test_inputs_ghost()
         # exit
+        self.exit()
+
+    def exit(self):
         if self.mainwindow:
             self.mainwindow.go_button.setDisabled(False)
         self.__ghost.hide()
@@ -301,10 +306,8 @@ class Test():
 
 
 if __name__ == '__main__':
-    start = time.clock()
     for location in sites:
+        start = time.clock()
         t = Test(location)
-        t.go()
-        break
-    end = time.clock()
-    print 'time:', end - start
+        end = time.clock()
+        print 'time:', end - start

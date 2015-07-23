@@ -29,6 +29,7 @@ class Form:
         s += "</form>"
         return s
 
+
 class A:
     def __init__(self, class_, href, outerHTML):
         self.class_ = class_
@@ -37,6 +38,7 @@ class A:
 
     def __str__(self):
         return "<a class='%s' href='%s'>" % (self.class_, self.href)
+
 
 class Input:
     def __init__(self, class_, id, name, type, value, outerHTML):
@@ -49,7 +51,19 @@ class Input:
         
     def __str__(self):
         return "<input class= '%s'id='%s' name='%s' type='%s', value='%s'>" % (self.class_, self.id, self.name, self.type, self.value)
-    
+
+
+class TextArea:
+    def __init__(self, class_, id, name, value, outerHTML):
+        self.class_ = class_
+        self.id = id
+        self.name = name
+        self.value = value
+        self.outerHTML = outerHTML.replace('\n', '')
+
+    def __str__(self):
+        return "<textarea class = '%s' id='%s' name='%s' value='%s'>" % (self.class_, self.id, self.name, self.value)
+
 
 class Button:
     def __init__(self, class_, id, name, type, outerHTML):
@@ -63,13 +77,13 @@ class Button:
         return "<button class = '%s' id='%s' name='%s' type='%s'>" % (self.class_, self.id, self.name, self.type)
 
 
-class TextArea:
-    def __init__(self, class_, id, name, value, outerHTML):
+class Tag:
+    def __init__(self, tag, class_, id, name, outerHTML):
+        self.tag = tag
         self.class_ = class_
         self.id = id
         self.name = name
-        self.value = value
         self.outerHTML = outerHTML.replace('\n', '')
 
     def __str__(self):
-        return "<textarea class = '%s' id='%s' name='%s' value='%s'>" % (self.class_, self.id, self.name, self.value)
+        return "<%s class = '%s' id='%s' name='%s'>" % (self.tag, self.class_, self.id, self.name)

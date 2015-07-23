@@ -104,7 +104,6 @@ class MainWindow(QMainWindow):
         url = unicode(self.urlText.text(), encoding="utf-8")
         t = Test(url, self)  # self.go_button.setDisabled(False)
         # setVector
-        t.go()
         del t
         return
 
