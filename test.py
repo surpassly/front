@@ -135,7 +135,7 @@ class Test():
     def test_inputs_ghost(self):
         for i, input in enumerate(self.__inputs):
             self.display(str(input))
-            if input.type not in ['button', 'submit']:
+            if input.type not in ['button', 'submit', 'hidden']:
                 continue
             flag = 0  # spy
             for j, xss in enumerate(self.spy + self.xss_rsnake):
@@ -144,7 +144,12 @@ class Test():
                 try:
                     self.__ghost.open(self.location)
                     self.__ghost.evaluate('''
-                    var tagElements = document.getElementsByTagName("input");
+                    var tagElements = document.getElementsByTagName("textarea");
+                    for (var i = 0; i < tagElements.length; i++) {
+                        var text = tagElements[i];
+                        text.innerHTML = "%s"
+                    };
+                    tagElements = document.getElementsByTagName("input");
                     for (var i = 0; i < tagElements.length; i++) {
                         var input = tagElements[i];
                         if (input.type == "" || input.type == "text" || input.type == "password" || (input.type == "hidden" && input.value == "")) {
@@ -152,8 +157,9 @@ class Test():
                             input.value = "%s"
                         }
                     };
-                    ''' % xss)
-                    self.__ghost.click("input[class='%s']" % str(' '.join(input.class_)), expect_loading=True)
+                    tagElements[%d].click();
+                    ''' % (xss, xss, i), expect_loading=True)
+                    # self.__ghost.click("input[class='%s']" % str(' '.join(input.class_)), expect_loading=True)
                     if j < len(self.spy) and not self.__identify_spy(xss):
                         flag += 1
                         if flag == len(self.spy):
@@ -173,11 +179,17 @@ class Test():
             flag = 0  # spy
             for j, xss in enumerate(self.spy + self.xss_rsnake):
                 self.display(xss, widget='xss')
+                xss = xss.replace('"', '\\"')
                 try:
                     self.__ghost.open(self.location)
                     self.__ghost.evaluate('''
                     var form = document.querySelectorAll("form")[%d];
-                    var tagElements = form.getElementsByTagName("input");
+                    var tagElements = form.getElementsByTagName("textarea");
+                    for (var i = 0; i < tagElements.length; i++) {
+                        var text = tagElements[i];
+                        text.innerHTML = "%s"
+                    };
+                    tagElements = form.getElementsByTagName("input");
                     for (var i = 0; i < tagElements.length; i++) {
                         var input = tagElements[i];
                         if (input.type == "" || input.type == "text" || input.type == "password" || (input.type == "hidden" && input.value == "")) {
@@ -186,7 +198,7 @@ class Test():
                         }
                     }
                     form.target = "_self";
-                    form["submit"]();''' % (i, xss.replace('"', '\\"')), expect_loading=True)
+                    form["submit"]();''' % (i, xss, xss), expect_loading=True)
                     # self.__ghost.click('button[class=doSearch]', expect_loading=True)
                     # self.__ghost.click("a[class='search_btn search_btn_enter_ba j_enter_ba']", expect_loading=True)
                     if j < len(self.spy) and not self.__identify_spy(xss):

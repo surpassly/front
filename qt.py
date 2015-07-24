@@ -53,6 +53,7 @@ class MainWindow(QMainWindow):
             w.append(content)
         else:
             w.append('')
+            w.moveCursor(QTextCursor.End)
             w.insertPlainText(content)
         # vb = w.verticalScrollBar()
         # vb.setValue(vb.maximum())
