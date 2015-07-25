@@ -62,7 +62,7 @@ class Crawler():
     def __init__(self, target_url):
         self.max_depth = 0 #0为单页面
         self.ghost = Ghost(wait_timeout=page_timeout, display=True, download_images=False)
-        #dvwa_security(self.ghost, 'low')
+        dvwa_security(self.ghost, 'low')
         self.base_url = base(target_url)
         self.result = {target_url: []} #字典保存所有url及其参数
         self.__page_crawler(target_url, 0)
@@ -211,7 +211,7 @@ class Crawler():
 
 
 if __name__ == '__main__':
-    target_url = "http://www.vanishingincmagic.com"
+    target_url = "http://127.0.0.1/dvwa/vulnerabilities/xss_r/"
     #记录时间
     start = time.clock()
     crawler = Crawler(target_url)

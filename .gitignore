@@ -1,0 +1,7 @@
+*.name
+*.pyc
+*.xml
+.idea/front.iml
+*.pyc
+
+*.pyc
