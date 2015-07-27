@@ -1,4 +1,5 @@
 # _*_coding:utf-8_*_
+from CodeWarrior.Standard_Suite import document
 reload(__import__('sys')).setdefaultencoding('utf-8')
 
 import os, time, random, string
@@ -9,8 +10,24 @@ from bs4 import BeautifulSoup
 from tag import *
 from sites import *
 
-page_timeout = 45
+page_timeout = 30
 alert_timeout = 3
+
+def baidu_login(ghost):
+    ghost.open('http://www.baidu.com')
+    ghost.evaluate("document.querySelector('a[name=tj_login]').click()")
+    try:
+        doc, res = ghost.wait_for_selector("form[id=TANGRAM__PSP_8__form]")   
+        ghost.evaluate('''
+        var form = document.querySelector('form[id=TANGRAM__PSP_8__form]');
+        document.querySelector('input[id=TANGRAM__PSP_8__userName]').value = "surpassly";
+        document.querySelector('input[id=TANGRAM__PSP_8__password]').value = "myself";
+        document.querySelector('input[id=TANGRAM__PSP_8__submit]').click()
+        form['submit']();
+        ''', expect_loading=True)
+        ghost.sleep(10)
+    except TimeoutError:
+        pass
 
 
 def dvwa_security(ghost, level):
@@ -82,9 +99,16 @@ class Test():
         self.mainwindow = mainwindow
         self.display("%s ...opening" % location, '<b>$</b>')
         self.__ghost = Ghost(wait_timeout=page_timeout, download_images=False, display=True)
-        # dvwa_security(self.__ghost, "low")
+        # baidu_login(self.__ghost)
+        self.headers = {"Host": "www.baidu.com",
+"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:38.0) Gecko/20100101 Firefox/38.0",
+"Accept": "text/plain, */*; q=0.01",
+"X-Requested-With": "XMLHttpRequest",
+"Referer": "https://www.baidu.com/",
+"Cookie": "BAIDUID=9659EC2E0F6EBEF778DAAF59B9279678:FG=1; BIDUPSID=474398EACE1F96528E0FAE9ED1C2D4EB; PSTM=1437797277; BD_UPN=133252; H_PS_PSSID=16539_1437_13245_10813_12868_14667_16520_16322_16211_16513_16424_16515_15314_16547_11455_13932_13618_10633; BD_CK_SAM=1; BDRCVFR[gltLrB7qNCt]=mk3SLVN4HKm; H_PS_645EC=c1e90Pqsqur8o4poqJq8ECpxkXG%2FBgfLQkkoWO7c%2BjaxGHxyz8BD4AM0p2vbZxGrcIkC; BD_HOME=1; BDUSS=ktGNWZZVlNLOFVQQ21UejIzbE5QWjJRTzU5TGh1dHp6bm14VlNlWlFiVHNTOTFWQVFBQUFBJCQAAAAAAAAAAAEAAADGRNwAc3VycGFzc2x5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOy-tVXsvrVVa; __bsi=10731930438804740924_00_0_I_R_3_0303_C02F_N_I_I_0",
+"Connection": "keep-alive"}
         try:
-            self.__ghost.open(location)
+            self.__ghost.open(location, headers=self.headers)
         except TimeoutError:
             self.display("init: TimeoutError", '<font color=red>$</font>')
             self.exit()
@@ -142,23 +166,24 @@ class Test():
                 self.display(xss, widget='xss')
                 xss = xss.replace('"', '\\"')
                 try:
-                    self.__ghost.open(self.location)
+                    self.__ghost.open(self.location, headers=self.headers)
                     self.__ghost.evaluate('''
+                    var xss = "%s"
                     var tagElements = document.getElementsByTagName("textarea");
                     for (var i = 0; i < tagElements.length; i++) {
                         var text = tagElements[i];
-                        text.innerHTML = "%s"
+                        text.innerHTML = xss
                     };
                     tagElements = document.getElementsByTagName("input");
                     for (var i = 0; i < tagElements.length; i++) {
                         var input = tagElements[i];
                         if (input.type == "" || input.type == "text" || input.type == "password" || (input.type == "hidden" && input.value == "")) {
                             input.removeAttribute("onfocus");
-                            input.value = "%s"
+                            input.value = xss
                         }
                     };
                     tagElements[%d].click();
-                    ''' % (xss, xss, i), expect_loading=True)
+                    ''' % (xss, i), expect_loading=True)
                     # self.__ghost.click("input[class='%s']" % str(' '.join(input.class_)), expect_loading=True)
                     if j < len(self.spy) and not self.__identify_spy(xss):
                         flag += 1
@@ -181,24 +206,25 @@ class Test():
                 self.display(xss, widget='xss')
                 xss = xss.replace('"', '\\"')
                 try:
-                    self.__ghost.open(self.location)
+                    self.__ghost.open(self.location, headers=self.headers)
                     self.__ghost.evaluate('''
+                    var xss = "%s"
                     var form = document.querySelectorAll("form")[%d];
                     var tagElements = form.getElementsByTagName("textarea");
                     for (var i = 0; i < tagElements.length; i++) {
                         var text = tagElements[i];
-                        text.innerHTML = "%s"
+                        text.innerHTML = xss
                     };
                     tagElements = form.getElementsByTagName("input");
                     for (var i = 0; i < tagElements.length; i++) {
                         var input = tagElements[i];
                         if (input.type == "" || input.type == "text" || input.type == "password" || (input.type == "hidden" && input.value == "")) {
                             input.removeAttribute("onfocus");
-                            input.value = "%s"
+                            input.value = xss
                         }
                     }
                     form.target = "_self";
-                    form["submit"]();''' % (i, xss, xss), expect_loading=True)
+                    form["submit"]();''' % (xss, i), expect_loading=True)
                     # self.__ghost.click('button[class=doSearch]', expect_loading=True)
                     # self.__ghost.click("a[class='search_btn search_btn_enter_ba j_enter_ba']", expect_loading=True)
                     if j < len(self.spy) and not self.__identify_spy(xss):
@@ -323,3 +349,4 @@ if __name__ == '__main__':
         t = Test(location)
         end = time.clock()
         print 'time:', end - start
+        break

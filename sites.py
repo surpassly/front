@@ -5,7 +5,8 @@ sites = [
 "http://www.baidu.com",
 # 没有提交按钮 是超链接 可以通过构造参数提交 "http://tieba.baidu.com/",
 # "http://127.0.0.1/dvwa/vulnerabilities/xss_r/",
-# 没有表单 直接从input提交 "http://www.u17.com",
+# 没有表单 直接从input提交 
+# "http://www.u17.com",
 # 复杂页面 多个搜索类别共用一个表单 通过hidden参数改变类别 同时搜索值也是一个hidden参数 由脚本更改后提交 "http://www.sina.com.cn/",
 # 没有表单 但可以提交意见
 # "http://cbg.baidu.com/?sc=1000020",
@@ -85,7 +86,6 @@ sites = [
 "http://www.yingjiesheng.com/",
 "http://www.58.com/?path=job.shtml",
 "http://www.youqudian.com/c_5/3711.html",
-
 "http://www.baihe.com/",
 "http://www.69xiu.com/extension/speadRoom?jxiusr=baidu_web_m5",
 "http://www.zhibo8.cc/",
