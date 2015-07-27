@@ -1,11 +1,10 @@
 # _*_coding:utf-8_*_
-from CodeWarrior.Standard_Suite import document
 reload(__import__('sys')).setdefaultencoding('utf-8')
 
 import os, time, random, string
 import urlparse
 from ghost import Ghost, TimeoutError
-from pywebfuzz import fuzzdb
+from pywebfuzz import fuzzdb, utils
 from bs4 import BeautifulSoup
 from tag import *
 from sites import *
@@ -13,11 +12,12 @@ from sites import *
 page_timeout = 30
 alert_timeout = 3
 
+
 def baidu_login(ghost):
     ghost.open('http://www.baidu.com')
     ghost.evaluate("document.querySelector('a[name=tj_login]').click()")
     try:
-        doc, res = ghost.wait_for_selector("form[id=TANGRAM__PSP_8__form]")   
+        ghost.wait_for_selector("form[id=TANGRAM__PSP_8__form]")
         ghost.evaluate('''
         var form = document.querySelector('form[id=TANGRAM__PSP_8__form]');
         document.querySelector('input[id=TANGRAM__PSP_8__userName]').value = "surpassly";
@@ -99,13 +99,19 @@ class Test():
         self.mainwindow = mainwindow
         self.display("%s ...opening" % location, '<b>$</b>')
         self.__ghost = Ghost(wait_timeout=page_timeout, download_images=False, display=True)
-        baidu_login(self.__ghost)
+        # baidu_login(self.__ghost)
         try:
             self.__ghost.open(location)
         except TimeoutError:
             self.display("init: TimeoutError", '<font color=red>$</font>')
             self.exit()
             return
+        '''
+        try:
+            self.__ghost.wait_for_text("surpassly", timeout=60)
+        except TimeoutError:
+            pass
+        '''
         self.__as = []
         self.__inputs = []
         self.__buttons = []
@@ -116,15 +122,12 @@ class Test():
         self.__get_all_tags(soup)
         self.display(str(self))
         self.spy = [create_spy(), create_spy()]
-        self.xss_rsnake = fuzzdb.attack_payloads.xss.xss_rsnake[:]  #　["<SCRIPT>alert(document.cookie);</SCRIPT>"] +
+        self.xss_rsnake = fuzzdb.attack_payloads.xss.xss_rsnake[:]
         self.go()
 
     def display(self, content, format=None, widget=None):
         print content
         if self.mainwindow:
-            # lines = content.split('\n')
-            # for l in lines:
-            # l = l.replace("<", "&lt;").replace(">", "&gt;").replace("&&", "&amp;")
             self.mainwindow.display(content, format, widget)
 
     def __get_all_tags(self, soup):
