@@ -4,7 +4,7 @@ reload(__import__('sys')).setdefaultencoding('utf-8')
 import os, time, random, string
 import urlparse
 from ghost import Ghost, TimeoutError
-from pywebfuzz import fuzzdb, utils
+from pywebfuzz import fuzzdb
 from bs4 import BeautifulSoup
 from tag import *
 from sites import *
@@ -95,35 +95,40 @@ def get_textareas(soup):
 
 
 class Test():
-    def __init__(self, location, mainwindow=None):
+    def __init__(self, location, mainwindow=None, username=None):
         self.mainwindow = mainwindow
-        self.display("%s ...opening" % location, '<b>$</b>')
-        self.__ghost = Ghost(wait_timeout=page_timeout, download_images=False, display=True)
-        # baidu_login(self.__ghost)
-        try:
-            self.__ghost.open(location)
-        except TimeoutError:
-            self.display("init: TimeoutError", '<font color=red>$</font>')
-            self.exit()
-            return
-        '''
-        try:
-            self.__ghost.wait_for_text("surpassly", timeout=60)
-        except TimeoutError:
-            pass
-        '''
+        self.username = username
         self.__as = []
         self.__inputs = []
         self.__buttons = []
         self.__textareas = []
         self.__forms = []
         self.location = location
+        self.spy = [create_spy(), create_spy()]
+        self.xss_rsnake = fuzzdb.attack_payloads.xss.xss_rsnake
+        self.__ghost = Ghost(wait_timeout=page_timeout, download_images=False, display=True)
+
+    def go(self):
+        self.display("%s ...opening" % self.location, '<b>$</b>')
+        try:
+            self.__ghost.open(self.location)
+        except TimeoutError:
+            self.display("init: TimeoutError", '<font color=red>$</font>')
+            self.exit()
+            return
+        if self.username:
+            try:
+                self.__ghost.wait_for_text(self.username, timeout=60)
+                self.__ghost.sleep(8)
+            except TimeoutError:
+                pass
         soup = BeautifulSoup(str(self.__ghost.content), from_encoding='utf-8')
         self.__get_all_tags(soup)
         self.display(str(self))
-        self.spy = [create_spy(), create_spy()]
-        self.xss_rsnake = fuzzdb.attack_payloads.xss.xss_rsnake[:]
-        self.go()
+        self.display('...testing', '<b>$</b>')
+        self.test_forms_ghost()
+        self.test_inputs_ghost()
+        self.exit()
 
     def display(self, content, format=None, widget=None):
         print content
@@ -155,7 +160,7 @@ class Test():
     def test_inputs_ghost(self):
         for i, input in enumerate(self.__inputs):
             self.display(str(input))
-            if input.type not in ['button', 'submit', 'hidden']:
+            if input.type not in ['button', 'submit']:
                 continue
             flag = 0  # spy
             for j, xss in enumerate(self.spy + self.xss_rsnake):
@@ -186,7 +191,7 @@ class Test():
                         if flag == len(self.spy):
                             break
                     self.__identify_xss()
-                    # self.capture_page(i, j)
+                    self.capture_page(i, j)
                 except TimeoutError:
                     self.display("test_inputs: TimeoutError", '<font color=red>$</font>', 'xss')
                     if j < len(self.spy):
@@ -199,8 +204,8 @@ class Test():
             self.display(str(form))
             flag = 0  # spy
             for j, xss in enumerate(self.spy + self.xss_rsnake):
-                self.display(xss, widget='xss')
                 xss = xss.replace('"', '\\"')
+                self.display(xss, widget='xss')
                 try:
                     self.__ghost.open(self.location)
                     self.__ghost.evaluate('''
@@ -228,7 +233,7 @@ class Test():
                         if flag == len(self.spy):
                             break
                     self.__identify_xss()
-                    # self.capture_page(i, j)
+                    self.capture_page(i, j)
                 except TimeoutError:
                     self.display("test_forms: TimeoutError", '<font color=red>$</font>', 'xss')
                     if j < len(self.spy):
@@ -325,24 +330,26 @@ class Test():
             s += '%s\n' % form
         return s[:-1] if s != "" else "init: Error"
 
-    def go(self):
-        self.display('...testing', '<b>$</b>')
-        self.test_forms_ghost()
-        self.test_inputs_ghost()
-        # exit
-        self.exit()
-
     def exit(self):
         if self.mainwindow:
             self.mainwindow.go_button.setDisabled(False)
         self.__ghost.hide()
         self.__ghost.sleep(60)
+        self.__ghost.exit()
 
 
 if __name__ == '__main__':
+    '''
+    import urllib2
+    doc = urllib2.urlopen("http://esf.cd.fang.com/agenthome/").read()
+    soup = BeautifulSoup(doc, from_encoding='gb18030')
+    print soup.prettify()
+    exit()
+    '''
     for location in sites:
         start = time.clock()
         t = Test(location)
+        t.go()
         end = time.clock()
         print 'time:', end - start
         break

@@ -48,9 +48,9 @@ class Input:
         self.type = type
         self.value = value
         self.outerHTML = outerHTML.replace('\n', '')
-        
+
     def __str__(self):
-        return "<input class= '%s'id='%s' name='%s' type='%s', value='%s'>" % (self.class_, self.id, self.name, self.type, self.value)
+        return "<input class= '%s' id='%s' name='%s' type='%s', value='%s'>" % (self.class_, self.id, self.name, self.type, self.value)
 
 
 class TextArea:
@@ -72,7 +72,7 @@ class Button:
         self.name = name
         self.type = type
         self.outerHTML = outerHTML.replace('\n', '')
-        
+
     def __str__(self):
         return "<button class = '%s' id='%s' name='%s' type='%s'>" % (self.class_, self.id, self.name, self.type)
 
