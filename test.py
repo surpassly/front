@@ -119,15 +119,18 @@ class Test():
         if self.username:
             try:
                 self.__ghost.wait_for_text(self.username, timeout=60)
-                self.__ghost.sleep(8)
+                self.__ghost.sleep(8)  # 8
             except TimeoutError:
                 pass
         soup = BeautifulSoup(str(self.__ghost.content), from_encoding='utf-8')
         self.__get_all_tags(soup)
-        self.display(str(self))
-        self.display('...testing', '<b>$</b>')
-        self.test_forms_ghost()
-        self.test_inputs_ghost()
+        if str(self) != "":
+            self.display(str(self))
+            self.display('...testing', '<b>$</b>')
+            self.test_forms_ghost()
+            self.test_inputs_ghost()
+        else:
+            self.display('get nothing', '<b>$</b>')
         self.exit()
 
     def display(self, content, format=None, widget=None):
@@ -204,8 +207,8 @@ class Test():
             self.display(str(form))
             flag = 0  # spy
             for j, xss in enumerate(self.spy + self.xss_rsnake):
-                xss = xss.replace('"', '\\"')
                 self.display(xss, widget='xss')
+                xss = xss.replace('"', '\\"')
                 try:
                     self.__ghost.open(self.location)
                     self.__ghost.evaluate('''
@@ -244,12 +247,12 @@ class Test():
     def __identify_spy(self, spy):
         result = False
         try:
-            result, resources = self.__ghost.wait_for_text(spy)
+            result, resources = self.__ghost.wait_for_text(spy, timeout=alert_timeout)
         except TimeoutError:
             pass
         finally:
             url, resources = self.__ghost.evaluate('window.location.href')
-            self.display(str(url), widget='xss')
+            self.display(str(url), "<a href='$'>$<a>", 'xss')
         return result
 
     def __identify_xss(self):
@@ -328,12 +331,11 @@ class Test():
             s += '%s\n' % textarea
         for form in self.__forms:
             s += '%s\n' % form
-        return s[:-1] if s != "" else "init: Error"
+        return s[:-1] if s != "" else ""
 
     def exit(self):
-        if self.mainwindow:
-            self.mainwindow.go_button.setDisabled(False)
         self.__ghost.hide()
+        self.display('finish', '<b>$</b>')
         self.__ghost.sleep(60)
         self.__ghost.exit()
 

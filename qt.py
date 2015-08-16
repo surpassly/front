@@ -112,10 +112,10 @@ class MainWindow(QMainWindow):
         url = unicode(self.urlText.text(), encoding="utf-8")
         username = unicode(self.nameText.text())
         username = None if username.strip() == '' else username
-        t = Test(url, self, username)  # self.go_button.setDisabled(False)
-        # setVector
+        t = Test(url, self, username)
         t.go()
-        del t
+        self.go_button.setDisabled(False)
+        # del t
         return
 
 
