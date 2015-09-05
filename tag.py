@@ -1,6 +1,50 @@
 # _*_coding:utf-8_*_
 
 
+def get_attrs(list, soup):
+    val = []
+    for attr in list:
+        val.append(soup[attr] if attr in soup.attrs else '')
+    val.append(soup.prettify())  # outerHTML
+    return val
+
+
+def get_as(soup):
+    res = []
+    bs_as = soup.find_all('a')
+    for bs_a in bs_as:
+        attrs = get_attrs(["class", "href"], bs_a)
+        res.append(A(*attrs))
+    return res
+
+
+def get_inputs(soup):
+    res = []
+    bs_inputs = soup.find_all('input')
+    for bs_input in bs_inputs:
+        attrs = get_attrs(["class", "id", "name", "type", "value"], bs_input)
+        res.append(Input(*attrs))
+    return res
+
+
+def get_buttons(soup):
+    res = []
+    bs_buttons = soup.find_all('button')
+    for bs_button in bs_buttons:
+        attrs = get_attrs(["class", "id", "name", "type"], bs_button)
+        res.append(Button(*attrs))
+    return res
+
+
+def get_textareas(soup):
+    res = []
+    bs_textareas = soup.find_all('textarea')
+    for bs_textarea in bs_textareas:
+        attrs = get_attrs(["class", "id", "name", "value"], bs_textarea)
+        res.append(TextArea(*attrs))
+    return res
+
+
 class Form:
     def __init__(self, action, id, method, name, outerHTML, as_, inputs, buttons, textareas):
         self.action = action

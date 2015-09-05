@@ -1,15 +1,13 @@
-#_*_coding:utf-8_*_
+# _*_coding:utf-8_*_
 
-reload(__import__('sys')).setdefaultencoding('utf-8') 
-
-import traceback, time, re
-from pywebfuzz import fuzzdb
+import urlparse
+from posixpath import normpath
 from ghost import Ghost, TimeoutError
+from test import Test
 from bs4 import BeautifulSoup
 
-page_timeout = 60
+page_timeout = 30
 alert_timeout = 3
-xss_rsnake = fuzzdb.attack_payloads.xss.xss_rsnake #调整向量个数
 
 
 def dvwa_security(ghost, level):
@@ -21,200 +19,128 @@ def dvwa_security(ghost, level):
     ghost.click('input[type=submit]', expect_loading=True)
 
 
-def url_extract(url):
-    url = url.split('?')
-    paras = []
-    if len(url) > 1:
-        paras = url[1].split('&')
-        for input, para in enumerate(paras):
-            paras[input] = para.split('=')[0]
-    return url[0], paras
-
-
-def no_slash(url):
-    if url[-1] == '/':
-        url = url[:-1]
+def slash(url):
+    if not url.endswith('/'):
+        url += '/'
     return url
 
 
-def standard(target_url, url):
-    '''
-    https://, //www., index.php
-    /action,
-    '''
-    if url.startswith('//'):
-        return 'http:' + url
-    elif url.startswith('/') and len(url) > 2:
-        return no_slash(target_url) + url
-    else:
-        return url
+class Crawler:
+    def __init__(self,
+                 location,
+                 setup_timeout=0,
+                 cookie_file=None,
+                 mainwindow=None):
+        self.mainwindow = mainwindow
+        self.__ghost = Ghost().start()
+        self.__ghost.wait_timeout = page_timeout
+        self.__ghost.download_images = False
+        if cookie_file != '':
+            try:
+                self.__ghost.load_cookies(cookie_file)
+            except IOError:
+                self.display("cookie: IOError", '<font color=red>$</font>', 'url')
+        if setup_timeout != 0:
+            self.__ghost.show()
+        self.setup_timeout = setup_timeout
+        self.max_depth = 1
+        self.url_queue = []
+        self.location = location
+        # dvwa_security(self.__ghost, 'low')
 
+    def display(self, content, format=None, widget=None):
+        print content
+        if self.mainwindow:
+            self.mainwindow.display(content, format, widget)
 
-def base(url):
-    s = re.search('\w+://[\w.]+/', url)
-    if s:
-        return s.group()
-    else:
-        return url
+    def convert_a(self, location, a):
+        if str(type(a)) == "<class 'bs4.element.Tag'>":
+            try:
+                href = a['href']
+            except KeyError:
+                return None
+        elif str(type(a)) == "<type 'str'>":
+            href = a
+        else:
+            return None  # <type 'unicode'>
+        href = href.strip()
+        # useless
+        if href.lower() in ['javascript:;', "javacript:void(0);", "javascript:void(0)", "javascript:void(0);",
+                           'return false;', '/', "http://www", ""]:
+            return None
+        for s in ['mailto:', '#', 'javascript:']:
+            if href.lower().startswith(s):
+                return None
+        # normal
+        if href.startswith('http://') or href.startswith('https://'):
+            return href
+        # path
+        if href.startswith("//"):
+            href = "http:" + href  # //www.baidu.com/s
+        elif href.startswith("/"):
+            href = self.host + href[1:]
+        else:
+            href = slash(location) + href
+        return href
 
-
-class Crawler():
-    def __init__(self, target_url):
-        self.max_depth = 0 #0为单页面
-        self.ghost = Ghost(wait_timeout=page_timeout, display=True, download_images=False)
-        dvwa_security(self.ghost, 'low')
-        self.base_url = base(target_url)
-        self.result = {target_url: []} #字典保存所有url及其参数
-        self.__page_crawler(target_url, 0)
-
-    def __add_url(self, all_url, url):
-        pre_url, paras = url_extract(url)
-        if pre_url not in self.result and pre_url.startswith(self.base_url):
-            self.result[pre_url] = set(self.result) | set(paras)
-            all_url.append(url)
-            #print 'add', url
-
-    def __page_crawler(self, target_url, depth):
-        if depth > self.max_depth:
+    def crawler_page(self, location, depth):
+        if depth >= self.max_depth:
             return
         try:
-            self.ghost.open(target_url)
-            print 'open', depth, target_url
+            self.__ghost.open(location)
+            current_url, resources = self.__ghost.evaluate('window.location.href')  # redirect
+            location = str(current_url)
         except TimeoutError:
-            print 'timeout'
             return
+        urls = []
+        soup = BeautifulSoup(str(self.__ghost.content), from_encoding='utf-8')
+        bs_as = soup.find_all('a')
+        for a in bs_as:
+            url = self.convert_a(location, a)
+            if url:
+                r = urlparse.urlparse(url)
+                host = slash(r.scheme + "://" + r.netloc)
+                if host == self.host and url not in self.url_queue:
+                    self.display(url,  "<a href='$'>$<a>", 'url')
+                    self.url_queue.append(url)
+                    urls.append(url)
+        for url in urls:
+            self.crawler_page(url, depth + 1)
 
-        all_url = [] #所有链接
-        url_queue = [] #临时
-        soup = BeautifulSoup(str(self.ghost.content), from_encoding='utf-8') #编码问题
-        '''
-        #获取点击事件
-        self.ghost.wait_timeout = 8 #模拟点击时
-        events = soup.find_all(onclick=True)
-        for e in events:
-            try:
-                continue_flag = 0
-                for k in ['return false;', 'logout']:
-                    if e['onclick'].lower().find(k) != -1:
-                        continue_flag = 1
-                        break
-                if continue_flag == 1:
-                    continue
-                if e['onclick'] not in url_queue:
-                    url_queue.append(e['onclick'])
-                    self.ghost.click(\'''*[onclick = "%s"]\''' % e['onclick'], expect_loading=True)
-                    url, resources = self.ghost.evaluate('window.location.href')
-                    if url != target_url:
-                        self.__add_url(all_url, str(url))
-                        self.ghost.open(target_url)
-            except TimeoutError:
-                print e['onclick'], 'no page loaded'
-            except:
-                print traceback.format_exc()
-        self.ghost.wait_timeout = page_timeout
+    def go(self):
+        self.display("...crawling", "<b>$<b>", 'url')
+        try:
+            self.__ghost.open(self.location)
+            current_url, resources = self.__ghost.evaluate('window.location.href')  # redirect
+            self.location = str(current_url)
+            r = urlparse.urlparse(self.location)
+            self.host = slash(r.scheme + "://" + r.netloc)  # redirect
+            self.display(self.location,  "<a href='$'>$<a>", 'url')
+            self.url_queue.append(self.location)
+        except TimeoutError:
+            self.display("init: TimeoutError", '<font color=red>$</font>', 'url')
+            self.exit()
+            return
+        self.__ghost.sleep(self.setup_timeout)
+        self.crawler_page(self.location, 0)  # url, depth
+        # Test
+        for url in self.url_queue:
+            t = Test(self.__ghost, url, self.mainwindow)
+            t.test()
+        self.exit()
 
-        #获取超链接
-        array = soup.find_all('a')
-        for a in array:
-            try:
-                continue_flag = 0
-                url = standard(target_url, a['href'])
-                for k in ['javascript:;', 'return false;', 'logout']:
-                    if url.lower().find(k) != -1:
-                        continue_flag = 1
-                        break
-                if continue_flag == 1:
-                    continue
-                if url.startswith('http'):
-                    self.__add_url(all_url, url) #url
-                elif url not in url_queue and not url.startswith('#'):
-                    url_queue.append(url)
-                    self.ghost.click(\'''a[href="%s"]\''' % url, expect_loading=True)
-                    url, resources = self.ghost.evaluate('window.location.href')
-                    if url != target_url:
-                        self.__add_url(all_url, str(url))
-                        self.ghost.open(target_url)
-            except TimeoutError:
-                print url, 'failed'
-            except KeyError:
-                pass
-            except:
-                print url, traceback.format_exc()
-        '''
-        #获取表单
-        target_forms = []
-        forms = soup.find_all('form')
-        for input, form in enumerate(forms):
-            names = []
-            inputs = form.find_all('input', type=lambda type: type == 'text' or type == 'password'or not type)
-            texts = form.find_all('textarea')
-            for input in inputs:
-                try:
-                    names.append(input['name'])
-                except KeyError:
-                    pass
-            for text in texts:
-                try:
-                    names.append(text['name'])
-                except KeyError:
-                    pass
-            if len(names) > 0:
-                target_forms.append((input, sorted(names)))
-        print 'target', target_forms
-        for input, names in target_forms:
-            self.submit_xss(all_url, target_url, input, names) #表单序号及其所有输入框
-            #深度优先
-        for url in all_url:
-            self.__page_crawler(url, depth + 1)
-
-    def __del__(self):
-        self.ghost.exit()
-
-    def submit_xss(self, all_url, target_url, form_i, names):
-        for input, xss in enumerate(xss_rsnake):
-            print 'submit', names, xss
-            try:
-                if input > 0:
-                    self.ghost.open(target_url)
-                for name in names:
-                    try:
-                        self.ghost.evaluate(
-                            "document.querySelectorAll('*[name=%s]')[0].removeAttribute('onfocus');" % name)
-                        #填写表单
-                        self.ghost.set_field_value("*[name=%s]" % name, xss)
-                    except:
-                        print traceback.format_exc()
-                self.ghost.evaluate(
-                    "document.querySelectorAll('input[type=submit]')[0].removeAttribute('onclick');")
-
-                #提交表单 自动
-                self.ghost.click('input[type=submit]')#, expect_loading=True)
-                #self.ghost.evaluate(
-                 #   "document.querySelectorAll('form')[%d]['submit']();" % form_i)#, expect_loading=True)
-
-                try:
-                    self.ghost.wait_timeout = alert_timeout
-                    result, resources = self.ghost.wait_for_alert()
-                    print '============================================================'
-                    print 'alert:', result
-                    print '============================================================'
-                    if result == 'XSS':
-                        break
-                except TimeoutError:
-                    pass
-                finally:
-                    self.ghost.wait_timeout = page_timeout
-                    url, resources = self.ghost.evaluate('window.location.href')
-                    self.__add_url(all_url, str(url))
-            except TimeoutError:
-                print 'failed'
+    def exit(self):
+        self.display("finish", "<b>$<b>", 'url')
+        self.__ghost.hide()
+        if self.mainwindow:
+            self.mainwindow.go_button.setEnabled(True)
+        self.__ghost.sleep(120)
+        # self.__ghost.exit()
 
 
 if __name__ == '__main__':
-    target_url = "http://127.0.0.1/dvwa/vulnerabilities/xss_r/"
-    #记录时间
-    start = time.clock()
-    crawler = Crawler(target_url)
-    print len(crawler.result), crawler.result
-    end = time.clock()
-    print 'time:', end - start
+    reload(__import__('sys')).setdefaultencoding('utf-8')
+    location = 'http://www.baidu.com'
+    c = Crawler(location)
+    c.go()
+
