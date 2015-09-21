@@ -1,4 +1,0 @@
-#LWP-Cookies-2.0
-Set-Cookie3: PHPSESSID=jglous6s8fetit2b23gt2ptbq6; path="/"; domain="127.0.0.1"; path_spec; expires="2038-01-19 03:14:07Z"; version=0
-Set-Cookie3: security=low; path="/dvwa/"; domain="127.0.0.1"; path_spec; expires="2038-01-19 03:14:07Z"; version=0
-Set-Cookie3: security=high; path="/dvwa/vulnerabilities/xss_r/"; domain="127.0.0.1"; path_spec; expires="2038-01-19 03:14:07Z"; version=0

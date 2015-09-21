@@ -9,7 +9,7 @@ from sites import *
 
 page_timeout = 30
 alert_timeout = 3
-login_timeout = 8
+tested_actions = []
 
 
 def create_spy():
@@ -42,43 +42,90 @@ class Test():
         if self.mainwindow:
             self.mainwindow.display(content, format, widget)
 
+    def baidu_login(self):
+        self.__ghost.click("a[name=tj_login]")
+        try:
+            self.__ghost.wait_for_selector("form[id=TANGRAM__PSP_8__form]")
+            self.__ghost.evaluate('''
+                var form = document.querySelector('form[id=TANGRAM__PSP_8__form]');
+                document.querySelector('input[id=TANGRAM__PSP_8__userName]').value = "surpassly";
+                document.querySelector('input[id=TANGRAM__PSP_8__password]').value = "myself";
+                document.querySelector('input[id=TANGRAM__PSP_8__submit]').click()
+                ''', expect_loading=True)
+            # self.__ghost.click("input[id=TANGRAM__PSP_8__submit]", expect_loading=True)
+            self.__ghost.sleep(10)
+        except TimeoutError:
+            pass
+
+    def manual(self):
+        xss = self.xss_rsnake[0].replace('"', '\\"')
+        self.__ghost.set_field_value('input[id=txtAddress]', '961289741@qq.com')
+        self.__ghost.evaluate('document.querySelector("input[id=txtAddress]").value = "%s"' % '961289741@qq.com')
+        self.__ghost.evaluate('document.querySelector("input[id=txtSubject]").value = "%s"' % xss)
+        self.__ghost.evaluate('document.querySelector("body[contenteditable=true]").innerHTML = "%s"' % xss)
+        self.__ghost.sleep(10)
+        self.__ghost.click('div[class="btn_r"]')
+        self.__ghost.evaluate('''
+            var xss = "%s"
+            var tagElements = document.querySelectorAll("textarea");
+            for (var i = 0; i < tagElements.length; i++) {
+                var text = tagElements[i];
+                text.innerHTML = xss
+            };
+            tagElements = document.querySelectorAll("input");
+            for (var i = 0; i < tagElements.length; i++) {
+                var input = tagElements[i];
+                if (input.type == "" || input.type == "text" || input.type == "password" || (input.type == "hidden" && input.value == "")) {
+                    input.removeAttribute("onfocus");
+                    input.removeAttribute("placeholder");
+                    input.value = xss
+                }
+            };
+            ''' % xss)
+
     def test(self):
-        urllib2.urlopen('http://wedge.sinaapp.com/s')  # reset
+        urllib2.urlopen('http://wedge.sinaapp.com/0')  # reset
         if self.mainwindow:
             self.mainwindow.console_split.clear()
             self.mainwindow.xss_split.clear()
         self.display("%s ...opening" % self.location, '<b>$</b>')
-        try:
-            self.__ghost.open(self.location)
-        except TimeoutError:
-            self.display("init: TimeoutError", '<font color=red>$</font>')
-            return
+        times = 0
+        while True:
+            try:
+                self.__ghost.open(self.location)
+                break
+            except TimeoutError:
+                times = times + 1
+            if times == 5:
+                self.display("TimeoutError", '<font color=red>$</font>')
         soup = BeautifulSoup(str(self.__ghost.content), from_encoding='utf-8')
         self.__get_all_tags(soup)
         if str(self) != "":
             self.display(str(self))
             self.display('...testing', '<b>$</b>')
             self.display("%s ...testing" % self.location, '<b>$</b>', 'url')
-            self.test_forms()  # regular
-            self.test_inputs()
+            self.manual()
+            # self.test_inputs()
+            # self.test_forms()  # regular
         else:
             self.display('get nothing', '<b>$</b>')
 
     def __get_all_tags(self, soup):
         self.__as = get_as(soup)
-        self.__inputs = get_inputs(soup)
         self.__buttons = get_buttons(soup)
+        self.__inputs = get_inputs(soup)
         self.__textareas = get_textareas(soup)
+        # get_forms
         bs_forms = soup.find_all('form')
         for bs_form in bs_forms:
             attrs = get_attrs(["action", "id", "method", "name"], bs_form)
-            for f in [get_as(bs_form), get_inputs(bs_form), get_buttons(bs_form), get_textareas(bs_form)]:
+            for f in [get_as(bs_form), get_buttons(bs_form), get_inputs(bs_form), get_textareas(bs_form)]:
                 attrs.append(f)
             self.__forms.append(Form(*attrs))
         # delete
         for form in self.__forms:
-            f_list = [form.as_, form.inputs, form.buttons, form.textareas]
-            s_list = [self.__as, self.__inputs, self.__buttons, self.__textareas]
+            f_list = [form.as_, form.buttons, form.inputs, form.textareas]
+            s_list = [self.__as, self.__buttons, self.__inputs, self.__textareas]
             for i in range(0, len(f_list)):
                 for f in f_list[i]:
                     for s in s_list[i]:
@@ -86,92 +133,67 @@ class Test():
                             s_list[i].remove(s)
         return
 
-    def test_inputs_super(self):
-        for i, input in enumerate(self.__inputs):
-            self.display(str(input))
-            if input.type in ['button', 'submit', 'reset']:  # interaction
-                continue
-            flag = 0  # spy
-            for j, xss in enumerate(self.spy + self.xss_rsnake):
-                self.display(xss, widget='xss')
-                xss = xss.replace('"', '\\"')
-                try:
-                    self.__ghost.open(self.location)
-                    self.__ghost.evaluate('''
-                    var xss = "%s"
-                    var tagElements = document.getElementsByTagName("textarea");
-                    for (var i = 0; i < tagElements.length; i++) {
-                        var text = tagElements[i];
-                        text.innerHTML = xss
-                    };
-                    tagElements = document.getElementsByTagName("input");
-                    for (var i = 0; i < tagElements.length; i++) {
-                        var input = tagElements[i];
-                        if (input.type == "" || input.type == "text" || input.type == "password" || (input.type == "hidden" && input.value == "")) {
-                            input.removeAttribute("onfocus");
-                            input.value = xss
-                        }
-                    };
-                    tagElements[%d].click();
-                    ''' % (xss, i), expect_loading=True)
-                    # self.__ghost.click("input[class='%s']" % str(' '.join(input.class_)), expect_loading=True)
-                    if j < len(self.spy) and not self.__identify_spy(xss):
-                        flag += 1
-                        if flag == len(self.spy):
-                            break
-                    self.__identify_xss(j)
-                    self.capture_page(i, j)
-                except TimeoutError:
-                    self.display("test_inputs: TimeoutError", '<font color=red>$</font>', 'xss')
-                    if j < len(self.spy):
-                        flag += 1
-                        if flag == len(self.spy):
-                            break
-
     def test_inputs(self):
         for i, input in enumerate(self.__inputs):
-            self.display(str(input))
-            if input.type not in ['button', 'submit']:
+            if input.type in ['hidden', 'button', 'submit', 'reset']:  # interaction
                 continue
-            flag = 0  # spy
-            for j, xss in enumerate(self.spy + self.xss_rsnake):
-                self.display(xss, widget='xss')
-                xss = xss.replace('"', '\\"')
-                try:
-                    self.__ghost.open(self.location)
-                    self.__ghost.evaluate('''
-                    var xss = "%s"
-                    var tagElements = document.getElementsByTagName("textarea");
-                    for (var i = 0; i < tagElements.length; i++) {
-                        var text = tagElements[i];
-                        text.innerHTML = xss
-                    };
-                    tagElements = document.getElementsByTagName("input");
-                    for (var i = 0; i < tagElements.length; i++) {
-                        var input = tagElements[i];
-                        if (input.type == "" || input.type == "text" || input.type == "password" || (input.type == "hidden" && input.value == "")) {
-                            input.removeAttribute("onfocus");
-                            input.value = xss
-                        }
-                    };
-                    tagElements[%d].click();
-                    ''' % (xss, i), expect_loading=True)
-                    # self.__ghost.click("input[class='%s']" % str(' '.join(input.class_)), expect_loading=True)
-                    if j < len(self.spy) and not self.__identify_spy(xss):
-                        flag += 1
-                        if flag == len(self.spy):
-                            break
-                    self.__identify_xss(j)
-                    self.capture_page(i, j)
-                except TimeoutError:
-                    self.display("test_inputs: TimeoutError", '<font color=red>$</font>', 'xss')
-                    if j < len(self.spy):
-                        flag += 1
-                        if flag == len(self.spy):
-                            break
+            self.display(str(input))
+            for tag in input.tags:
+                self.display("    " + str(tag))
+                flag = 0  # spy
+                attr = ''
+                value = ''
+                if tag.class_ != '':
+                    attr = 'class'
+                    value = str(' '.join(tag.class_))
+                elif tag.id != '':
+                    attr = 'id'
+                    value = tag.id
+                for j, xss in enumerate(self.spy + self.xss_rsnake):
+                    self.display(xss, widget='xss')
+                    xss = xss.replace('"', '\\"')
+                    try:
+                        self.__ghost.open(self.location)
+                        self.__ghost.evaluate('''
+                        var xss = "%s"
+                        var tagElements = document.querySelectorAll("textarea");
+                        for (var i = 0; i < tagElements.length; i++) {
+                            var text = tagElements[i];
+                            text.innerHTML = xss
+                        };
+                        tagElements = document.querySelectorAll("input");
+                        for (var i = 0; i < tagElements.length; i++) {
+                            var input = tagElements[i];
+                            if (input.type == "" || input.type == "text" || input.type == "password" || (input.type == "hidden" && input.value == "")) {
+                                input.removeAttribute("onfocus");
+                                input.removeAttribute("placeholder");
+                                input.value = xss
+                            }
+                        };
+                        ''' % xss)
+                        self.__ghost.click("%s[%s=%s]" % (tag.tag, attr, value), expect_loading=True)
+                        if j < len(self.spy) and not self.__identify_spy(xss):
+                            flag += 1
+                            if flag == len(self.spy):
+                                break
+                        self.__identify_xss(j)
+                        self.capture_page(i, j)
+                    except TimeoutError:
+                        self.display("test_inputs: TimeoutError", '<font color=red>$</font>', 'xss')
+                        if j < len(self.spy):
+                            flag += 1
+                            if flag == len(self.spy):
+                                break
+                if flag == 0:
+                    break
 
     def test_forms(self):
         for i, form in enumerate(self.__forms):
+            # same
+            if form.action in tested_actions:
+                continue
+            else:
+                tested_actions.append(form.action)
             self.display(str(form))
             flag = 0  # spy
             for j, xss in enumerate(self.spy + self.xss_rsnake):
@@ -182,16 +204,17 @@ class Test():
                     self.__ghost.evaluate('''
                     var xss = "%s"
                     var form = document.querySelectorAll("form")[%d];
-                    var tagElements = form.getElementsByTagName("textarea");
+                    var tagElements = form.querySelectorAll("textarea");
                     for (var i = 0; i < tagElements.length; i++) {
                         var text = tagElements[i];
                         text.innerHTML = xss
                     };
-                    tagElements = form.getElementsByTagName("input");
+                    tagElements = form.querySelectorAll("input");
                     for (var i = 0; i < tagElements.length; i++) {
                         var input = tagElements[i];
                         if (input.type == "" || input.type == "text" || input.type == "password" || (input.type == "hidden" && input.value == "")) {
                             input.removeAttribute("onfocus");
+                            input.removeAttribute("placeholder");
                             input.value = xss
                         }
                     }
@@ -218,9 +241,11 @@ class Test():
             result, resources = self.__ghost.wait_for_text(spy, timeout=alert_timeout)
         except TimeoutError:
             pass
+        '''
         finally:
             url, resources = self.__ghost.evaluate('window.location.href')
-            # self.display(str(url), "<a href='$'>$<a>", 'xss')
+            self.display(str(url), "<a href='$'>$<a>", 'xss')
+        '''
         return result
 
     def __identify_xss(self, i):
@@ -235,11 +260,10 @@ class Test():
         try:  # SRC
             doc = urllib2.urlopen('http://wedge.sinaapp.com/r')
             result = BeautifulSoup(doc).find('body').string
-            if result == '$%d' % i:
+            if result != '0' and result == '%d' % i:
                 self.display('src: %s' % result, '<b>$</b>', 'xss')
         except TimeoutError:
             pass
-
         return flag
 
     def capture_page(self, i, j):
@@ -262,10 +286,10 @@ class Test():
         else:
             for a in self.__as:
                 s += '%s\n' % a
-        for input in self.__inputs:
-            s += '%s\n' % input
         for button in self.__buttons:
             s += '%s\n' % button
+        for input in self.__inputs:
+            s += '%s\n' % input
         for textarea in self.__textareas:
             s += '%s\n' % textarea
         for form in self.__forms:
@@ -275,13 +299,11 @@ class Test():
 
 if __name__ == '__main__':
     reload(__import__('sys')).setdefaultencoding('utf-8')
-    '''
-    location = 'http://www.baidu.com'
+    location = sites[0]
     ghost = Ghost().start()
+    ghost._confirm_expected = True
+    ghost.load_cookies('513.txt')
     ghost.wait_timeout = page_timeout
     ghost.download_images = False
-    ghost.show()
-    ghost.open(location)
     t = Test(ghost, location)
     t.test()
-    '''

