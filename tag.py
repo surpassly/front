@@ -9,11 +9,11 @@ def get_attrs(list, soup):
     return val
 
 
-def get_as(soup):
+def get_hrefs(soup):
     res = []
-    bs_as = soup.find_all('a')
-    for bs_a in bs_as:
-        attrs = get_attrs(["class", "href"], bs_a)
+    bs_hrefs = soup.find_all('a')
+    for bs_href in bs_hrefs:
+        attrs = get_attrs(["class", "href"], bs_href)
         res.append(A(*attrs))
     return res
 
@@ -35,9 +35,7 @@ def get_inputs(soup):
         tags = []
         if attrs[3] not in ['hidden', 'button', 'submit', 'reset']:  # type
             bs_parent = bs_input.parent
-            while True:
-                if not bs_parent:
-                    break
+            while bs_parent:
                 for child in bs_parent:
                     try:
                         if str(child).strip() != "":
@@ -82,23 +80,23 @@ def get_textareas(soup):
 
 
 class Form:
-    def __init__(self, action, id, method, name, outerHTML, as_, buttons, inputs, textareas):
+    def __init__(self, action, id, method, name, outerHTML, hrefs, buttons, inputs, textareas):
         self.action = action
         self.id = id
         self.method = method
         self.name = name
         self.outerHTML = outerHTML
-        self.as_ = as_
+        self.hrefs = hrefs
         self.buttons = buttons
         self.inputs = inputs
         self.textareas = textareas
 
     def __str__(self):
         s = "<form action='%s' id='%s' method='%s' name='%s'>\n" % (self.action, self.id, self.method, self.name)
-        if len(self.as_) > 10:
-            s += '    <a>: %d\n' % len(self.as_)
+        if len(self.hrefs) > 10:
+            s += '    <a>: %d\n' % len(self.hrefs)
         else:
-            for a in self.as_:
+            for a in self.hrefs:
                 s += '    %s\n' % a
         for button in self.buttons:
             s += '    %s\n' % button

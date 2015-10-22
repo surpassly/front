@@ -2,7 +2,7 @@
 
 import urlparse
 from ghost import Ghost, TimeoutError
-from test import Test
+from test import Test, slash
 from bs4 import BeautifulSoup
 
 page_timeout = 30
@@ -18,28 +18,22 @@ def dvwa_security(ghost, level):
     ghost.click('input[type=submit]', expect_loading=True)
 
 
-def slash(url):
-    if not url.endswith('/'):
-        url += '/'
-    return url
-
-
 class Crawler:
     def __init__(self,
                  location,
                  cookie_file=None,
                  mainwindow=None):
         self.mainwindow = mainwindow
-        self.__ghost = Ghost().start()
-        self.__ghost._confirm_expected = True
-        self.__ghost.wait_timeout = page_timeout
-        self.__ghost.download_images = False
+        self.ghost = Ghost().start()
+        self.ghost._confirm_expected = True  #
+        self.ghost.wait_timeout = page_timeout
+        self.ghost.download_images = False
         if cookie_file != '':
             try:
-                self.__ghost.load_cookies(cookie_file)
+                self.ghost.load_cookies(cookie_file)
             except IOError:
                 self.display("cookie: IOError", '<font color=red>$</font>', 'url')
-        self.max_depth = 1
+        self.max_depth = 0
         self.url_queue = []
         self.location = location.split('?')[0]
         # dvwa_security(self.__ghost, 'low')
@@ -49,8 +43,8 @@ class Crawler:
         times = 0
         while True:
             try:
-                self.__ghost.open(self.location)
-                current_url, resources = self.__ghost.evaluate('window.location.href')  # redirect
+                self.ghost.open(self.location)
+                current_url, resources = self.ghost.evaluate('window.location.href')  # redirect
                 self.location = str(current_url)
                 r = urlparse.urlparse(self.location)
                 self.host = r.netloc  # slash(r.scheme + "://" + r.netloc)
@@ -65,7 +59,7 @@ class Crawler:
         self.crawler_page(self.location, 0)  # url, depth
         # Test
         for url in self.url_queue:
-            t = Test(self.__ghost, url, self.mainwindow)
+            t = Test(self.ghost, url, self.mainwindow)
             t.test()
         self.exit()
 
@@ -73,13 +67,13 @@ class Crawler:
         if depth >= self.max_depth:
             return
         try:
-            self.__ghost.open(location)
-            current_url, resources = self.__ghost.evaluate('window.location.href')  # redirect
+            self.ghost.open(location)
+            current_url, resources = self.ghost.evaluate('window.location.href')  # redirect
             location = str(current_url)
         except TimeoutError:
             return
         urls = []
-        soup = BeautifulSoup(str(self.__ghost.content), from_encoding='utf-8')
+        soup = BeautifulSoup(str(self.ghost.content), from_encoding='utf-8')
         bs_as = soup.find_all('a')
         for a in bs_as:
             url = self.convert_a(location, a)
@@ -129,12 +123,12 @@ class Crawler:
         return href
 
     def exit(self):
-        self.__ghost.hide()
+        self.ghost.hide()
         if self.mainwindow:
             self.mainwindow.go_button.setEnabled(True)
             self.mainwindow.finish()
         else:
             print "Finish"
-        self.__ghost.sleep(120)
+        self.ghost.sleep(120)
         # self.__ghost.exit()
 
